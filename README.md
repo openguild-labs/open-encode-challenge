@@ -1,8 +1,10 @@
 <div align="center">
 
-<img width="120px" src="https://github.com/user-attachments/assets/cb125c85-5a38-4737-8c6b-313b0b5b2833"/>
+![image](https://github.com/user-attachments/assets/ee09397c-890b-49ce-ac7e-aa89172e99f2)
 
 # OpenGuild - Solidity Challenges
+
+<img width="50px" src="https://github.com/user-attachments/assets/cb125c85-5a38-4737-8c6b-313b0b5b2833"/>
 
 OpenGuild challenges made for the [Lost Tribes: The Blockspace Mansion with Polkadot](https://lu.ma/losttribeshackerhouse) during ETHDenver 2025.
 
