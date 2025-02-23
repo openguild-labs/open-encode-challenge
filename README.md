@@ -56,7 +56,7 @@ git commit -m "Register for OpenGuild Lost Tribes Challenges"
 
 ## Discover the List of Challenges 🏆
 
-[<kbd> <br> 👉 Click to submit your challenge solutions <br> </kbd>](./)
+# [<br> <b>👉 Click here to submit your challenge solutions</b> <br>](https://voedlx91m5k.typeform.com/to/ymIGMqRo)
 
 | Challenge | Description                                                                                                                                                                                                      | Action                                               | Bounty |
 | --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- | ------ |
