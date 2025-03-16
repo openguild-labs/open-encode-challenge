@@ -52,11 +52,13 @@ git commit -m "Register for OpenGuild Lost Tribes Challenges"
 
 ## Discover the List of Challenges 🏆
 
+Total prize pool: 1500$ / 10 submissions
+
 | Challenge | Description                                                                                                                                                                                                      | Action                                               | Bounty |
 | --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- | ------ |
-| 1         | Solve a token vesting smart contract challenge and [deploy on Westend Asset Hub](https://contracts.polkadot.io/deploy-your-first-contract)                                                                       | [Take Challenge](./challenge-1-vesting/README.md)    | $30    |
-| 2         | Solve a yield farming smart contract challenge and [deploy on Westend Asset Hub](https://contracts.polkadot.io/deploy-your-first-contract)                                                                       | [Take Challenge](./challenge-2-yield-farm/README.md) | $30    |
-| 3         | Build frontend with [DOT UI Kit](https://github.com/openguild-labs/dotui.git) for the [token vesting](./challenge-2-yield-farm/README.md) or [yield farming](./challenge-2-yield-farm/README.md) smart contract. | [Take Challenge](./challenge-3-frontend/README.md)   | $40    |
+| 1         | Solve a token vesting smart contract challenge and [deploy on Westend Asset Hub](https://contracts.polkadot.io/deploy-your-first-contract)                                                                       | [Take Challenge](./challenge-1-vesting/README.md)    | $50    |
+| 2         | Solve a yield farming smart contract challenge and [deploy on Westend Asset Hub](https://contracts.polkadot.io/deploy-your-first-contract)                                                                       | [Take Challenge](./challenge-2-yield-farm/README.md) | $50    |
+| 3         | Build frontend with [DOT UI Kit](https://github.com/openguild-labs/dotui.git) for the [token vesting](./challenge-2-yield-farm/README.md) or [yield farming](./challenge-2-yield-farm/README.md) smart contract. | [Take Challenge](./challenge-3-frontend/README.md)   | $50    |
 
 ## Resources for Development 🧑‍💻
 
