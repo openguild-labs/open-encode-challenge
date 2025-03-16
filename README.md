@@ -1,12 +1,8 @@
 <div align="center">
 
-![image](https://github.com/user-attachments/assets/ee09397c-890b-49ce-ac7e-aa89172e99f2)
+![Group 225](https://github.com/user-attachments/assets/e8b0cc06-1adb-417a-be5c-44542fe92269)
 
-# OpenGuild - Solidity Challenges
-
-<img width="50px" src="https://github.com/user-attachments/assets/cb125c85-5a38-4737-8c6b-313b0b5b2833"/>
-
-OpenGuild challenges made for the [Lost Tribes: The Blockspace Mansion with Polkadot](https://lu.ma/losttribeshackerhouse) during ETHDenver 2025.
+# OpenGuild x Encode Club Solidity Challenges
 
 </div>
 
@@ -55,8 +51,6 @@ git commit -m "Register for OpenGuild Lost Tribes Challenges"
 <div align="center">
 
 ## Discover the List of Challenges 🏆
-
-[<kbd> <br> 👉 Click to submit your challenge solutions <br> </kbd>](https://voedlx91m5k.typeform.com/to/ymIGMqRo)
 
 | Challenge | Description                                                                                                                                                                                                      | Action                                               | Bounty |
 | --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- | ------ |
