@@ -149,6 +149,7 @@ describe("YieldFarm", function () {
     });
 
     it("Should allow users to withdraw staked tokens", async function () {
+      console.log(await yieldFarm.userInfo(user1.address));
       await yieldFarm.connect(user1).withdraw(stakeAmount);
 
       const userInfo = await yieldFarm.userInfo(user1.address);
