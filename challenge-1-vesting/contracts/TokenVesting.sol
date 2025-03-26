@@ -30,18 +30,23 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 contract TokenVesting is Ownable(msg.sender), Pausable, ReentrancyGuard {
     struct VestingSchedule {
-    // TODO: Define the vesting schedule struct
+        uint256 startTime;
+        uint256 cliffDuration;
+        uint256 vestingDuration;
+        uint256 totalAmount;
+        uint256 claimed;
+        uint256 revokedTime;
+        address token;
     }
 
     // Token being vested
-    // TODO: Add state variables
-
+    mapping(address => bool) public tokens;
 
     // Mapping from beneficiary to vesting schedule
-    // TODO: Add state variables
+    mapping(address => VestingSchedule) public vestingSchedules;
 
     // Whitelist of beneficiaries
-    // TODO: Add state variables
+    mapping(address => bool) public whitelist;
 
     // Events
     event VestingScheduleCreated(address indexed beneficiary, uint256 amount);
@@ -50,14 +55,32 @@ contract TokenVesting is Ownable(msg.sender), Pausable, ReentrancyGuard {
     event BeneficiaryWhitelisted(address indexed beneficiary);
     event BeneficiaryRemovedFromWhitelist(address indexed beneficiary);
 
-    constructor(address tokenAddress) {
-           // TODO: Initialize the contract
+    /* --------------------------------- ERRORS --------------------------------- */
+    error ZeroAddress();
+    error InvalidStartTime();
+    error InvalidTotalAmount();
+    error InvalidCliffDuration();
+    error InvalidVestingDuration();
+    error VestingScheduleNotExists();
+    error VestingScheduleAlreadyExists();
+    error VestingScheduleAlreadyRevoked();
+    error VestingScheduleAlreadyEnded();
+    error NoClaimableTokens();
 
+    constructor(address tokenAddress) {
+        require(tokenAddress != address(0));
+        tokens[tokenAddress] = true;
     }
 
     // Modifier to check if beneficiary is whitelisted
     modifier onlyWhitelisted(address beneficiary) {
         require(whitelist[beneficiary], "Beneficiary not whitelisted");
+        _;
+    }
+
+    // Modifier to check whitelist token
+    modifier onlyWhitelistedToken(address token) {
+        require(tokens[token], "Token not whitelisted");
         _;
     }
 
@@ -72,29 +95,121 @@ contract TokenVesting is Ownable(msg.sender), Pausable, ReentrancyGuard {
         emit BeneficiaryRemovedFromWhitelist(beneficiary);
     }
 
+    // @dev control the status of whitelisted token
+    function changeWhitelistedToken(
+        address token,
+        bool whitelisted
+    ) external onlyOwner {
+        require(token != address(0), "Invalid address");
+        tokens[token] = whitelisted;
+    }
+
     function createVestingSchedule(
         address beneficiary,
         uint256 amount,
         uint256 cliffDuration,
         uint256 vestingDuration,
-        uint256 startTime
-    ) external onlyOwner onlyWhitelisted(beneficiary) whenNotPaused {
-        // TODO: Implement vesting schedule creation
+        uint256 startTime,
+        address token // @bonus - support for multiple token types
+    )
+        external
+        onlyOwner
+        onlyWhitelisted(beneficiary)
+        whenNotPaused
+        onlyWhitelistedToken(token)
+    {
+        uint256 createdTime = block.timestamp;
+        if (startTime < createdTime) {
+            revert InvalidStartTime();
+        }
+        if (amount == 0) {
+            revert InvalidTotalAmount();
+        }
+        if (vestingDuration == 0 && vestingDuration < cliffDuration) {
+            revert InvalidVestingDuration();
+        }
+
+        VestingSchedule memory vestingSchedule = VestingSchedule({
+            startTime: startTime,
+            cliffDuration: cliffDuration,
+            vestingDuration: vestingDuration,
+            totalAmount: amount,
+            claimed: 0,
+            revokedTime: 0,
+            token: token
+        });
+        vestingSchedules[beneficiary] = vestingSchedule;
+
+        // Transfer token
+        _safeTransferFrom(token, msg.sender, address(this), amount);
+
+        emit VestingScheduleCreated(beneficiary, amount);
     }
 
     function calculateVestedAmount(
         address beneficiary
     ) public view returns (uint256) {
-        // TODO: Implement vested amount calculation
+        VestingSchedule memory vestingSchedule = vestingSchedules[beneficiary];
+        uint256 currentTime = block.timestamp;
+        if (
+            vestingSchedule.startTime + vestingSchedule.cliffDuration >
+            currentTime
+        ) {
+            return 0;
+        }
+        uint256 actualVestedTime = vestingSchedule.revokedTime == 0
+            ? currentTime - vestingSchedule.startTime
+            : vestingSchedule.revokedTime - vestingSchedule.startTime;
+
+        // Linear vesting calculation
+        uint256 actualVestingAmount = actualVestedTime >=
+            vestingSchedule.vestingDuration
+            ? vestingSchedule.totalAmount
+            : (actualVestedTime * vestingSchedule.totalAmount) /
+                vestingSchedule.vestingDuration;
+
+        return
+            actualVestingAmount > vestingSchedule.claimed
+                ? actualVestingAmount - vestingSchedule.claimed
+                : 0;
     }
 
     function claimVestedTokens() external nonReentrant whenNotPaused {
-           // TODO: Implement token claiming
+        address beneficiary = msg.sender;
+        uint256 vestedAmount = calculateVestedAmount(beneficiary);
+        require(vestedAmount > 0, "No tokens to claim");
+        VestingSchedule memory vestingSchedule = vestingSchedules[beneficiary];
+        // Transfer token
+        _safeTransfer(vestingSchedule.token, beneficiary, vestedAmount);
+        vestingSchedules[beneficiary].claimed += vestedAmount;
+        emit TokensClaimed(beneficiary, vestedAmount);
     }
 
     function revokeVesting(address beneficiary) external onlyOwner {
-        // TODO: Implement vesting revocation
+        VestingSchedule memory vestingSchedule = vestingSchedules[beneficiary];
+        if (vestingSchedule.startTime == 0) {
+            revert VestingScheduleNotExists();
+        }
+        if (vestingSchedule.revokedTime > 0) {
+            revert VestingScheduleAlreadyRevoked();
+        }
+        if (
+            block.timestamp >
+            vestingSchedule.startTime + vestingSchedule.vestingDuration
+        ) {
+            revert VestingScheduleAlreadyEnded();
+        }
+        // Mark as revoked
+        vestingSchedules[beneficiary].revokedTime = block.timestamp;
 
+        uint256 vestedToken = calculateVestedAmount(beneficiary);
+        uint256 unvestedToken = vestingSchedule.totalAmount - vestedToken;
+        // Transfer back
+        if (unvestedToken > 0) {
+            _safeTransfer(vestingSchedule.token, owner(), unvestedToken);
+        }
+
+        emit VestingRevoked(beneficiary);
     }
 
     function pause() external onlyOwner {
@@ -103,6 +218,35 @@ contract TokenVesting is Ownable(msg.sender), Pausable, ReentrancyGuard {
 
     function unpause() external onlyOwner {
         _unpause();
+    }
+
+    /* ----------------------------- VIEW FUNCTIONS ----------------------------- */
+
+    /* --------------------------- INTERNAL FUNCTIONS --------------------------- */
+    // @dev support transfer token
+    function _safeTransfer(address token, address to, uint256 amount) internal {
+        require(token.code.length > 0);
+        (bool success, bytes memory data) = token.call(
+            abi.encodeWithSelector(IERC20.transfer.selector, to, amount)
+        );
+        require(success && (data.length == 0 || abi.decode(data, (bool))));
+    }
+    function _safeTransferFrom(
+        address token,
+        address from,
+        address to,
+        uint256 amount
+    ) internal {
+        require(token.code.length > 0);
+        (bool success, bytes memory data) = token.call(
+            abi.encodeWithSelector(
+                IERC20.transferFrom.selector,
+                from,
+                to,
+                amount
+            )
+        );
+        require(success && (data.length == 0 || abi.decode(data, (bool))));
     }
 }
 
