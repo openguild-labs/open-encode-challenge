@@ -27,6 +27,9 @@ export default function Navbar() {
       >
         Mint/Redeem LST Bifrost
       </Link>
+      <Link className="text-sm underline underline-offset-4" href="/yield-farm">
+        Yield Farm
+      </Link>
     </div>
   );
 }

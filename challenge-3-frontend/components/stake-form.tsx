@@ -14,7 +14,7 @@ import {
 } from "wagmi";
 
 // Viem imports
-import { parseUnits, formatUnits, isAddress, Address } from "viem";
+import { parseUnits, formatUnits } from "viem";
 
 // Lucide imports (for icons)
 import {
@@ -86,8 +86,13 @@ import { Skeleton } from "./ui/skeleton";
 import { localConfig } from "@/app/providers";
 
 // Abi for ERC20 Token
-import { erc20AbiExtend } from "@/lib/abi";
-export default function WriteContract() {
+import { mockErc20Abi, yieldFarmingAbi } from "@/lib/abi";
+import {
+  LPTOKEN_CONTRACT_ADDRESS,
+  YIELDFARM_CONTRACT_ADDRESS,
+} from "@/lib/constants";
+
+export default function StakeForm() {
   // useConfig hook to get config
   const config = useConfig();
 
@@ -102,50 +107,8 @@ export default function WriteContract() {
   // get the address from session storage
   const address = useAtomValue(addressAtom);
 
-  // useWriteContract hook to write contract
-  const {
-    data: hash,
-    error,
-    isPending,
-    writeContractAsync,
-  } = useWriteContract({
-    config: address ? localConfig : config,
-  });
-
-  const USDC_CONTRACT_ADDRESS = "0xc8576Fb6De558b313afe0302B3fedc6F6447BbEE";
-
-  // useReadContracts hook to read contract
-  const { data, refetch } = useReadContracts({
-    contracts: [
-      {
-        address: USDC_CONTRACT_ADDRESS,
-        abi: erc20AbiExtend,
-        functionName: "balanceOf",
-        args: [address ? address : account.address],
-      },
-      {
-        address: USDC_CONTRACT_ADDRESS,
-        abi: erc20AbiExtend,
-        functionName: "decimals",
-      },
-    ],
-    config: address ? localConfig : config,
-  });
-
-  // get the max balance and decimals from the data
-  const maxBalance = data?.[0]?.result as bigint | undefined;
-  const decimals = data?.[1]?.result as number | undefined;
-
   // form schema for sending transaction
   const formSchema = z.object({
-    // address is a required field
-    address: z
-      .string()
-      .min(2)
-      .max(50)
-      .refine((val) => val === "" || isAddress(val), {
-        message: "Invalid address format",
-      }) as z.ZodType<Address | "">,
     // amount is a required field
     amount: z
       .string()
@@ -175,37 +138,105 @@ export default function WriteContract() {
     resolver: zodResolver(formSchema),
     // default values for address and amount
     defaultValues: {
-      address: "",
       amount: "",
     },
   });
 
+  // useWriteContract hook to write contract
+  const {
+    data: hash,
+    error,
+    isPending,
+    writeContractAsync,
+  } = useWriteContract({
+    config: address ? localConfig : config,
+  });
+  // useReadContracts hook to read contract
+  const { data, refetch } = useReadContracts({
+    contracts: [
+      {
+        address: LPTOKEN_CONTRACT_ADDRESS,
+        abi: mockErc20Abi,
+        functionName: "balanceOf",
+        args: [address ? address : account.address],
+      },
+      {
+        address: LPTOKEN_CONTRACT_ADDRESS,
+        abi: mockErc20Abi,
+        functionName: "decimals",
+      },
+      {
+        // get the allowance of the selected token
+        address: LPTOKEN_CONTRACT_ADDRESS,
+        abi: mockErc20Abi,
+        functionName: "allowance",
+        args: [address ? address : account.address, YIELDFARM_CONTRACT_ADDRESS],
+      },
+    ],
+    config: address ? localConfig : config,
+  });
+
+  // get the max balance and decimals from the data
+  const maxBalance = data?.[0]?.result as bigint | undefined;
+  const decimals = data?.[1]?.result as number | undefined;
+  const mintAllowance = data?.[2]?.result as bigint | undefined; // allowance of the selected token
+
+  // extract the amount value from the form
+  const amount = form.watch("amount");
+
+  // check if the amount is greater than the mint allowance
+  const needsApprove =
+    mintAllowance !== undefined && amount
+      ? mintAllowance < parseUnits(amount, decimals || 18)
+      : false;
+
   // 2. Define a submit handler.
   async function onSubmit(values: z.infer<typeof formSchema>) {
     if (address) {
-      writeContractAsync({
-        account: await getSigpassWallet(),
-        address: USDC_CONTRACT_ADDRESS,
-        abi: erc20AbiExtend,
-        functionName: "transfer",
-        args: [
-          values.address as Address,
-          parseUnits(values.amount, decimals as number),
-        ],
-        chainId: westendAssetHub.id,
-      });
+      if (needsApprove) {
+        writeContractAsync({
+          account: await getSigpassWallet(),
+          address: LPTOKEN_CONTRACT_ADDRESS,
+          abi: mockErc20Abi,
+          functionName: "approve",
+          args: [
+            YIELDFARM_CONTRACT_ADDRESS,
+            parseUnits(values.amount, decimals as number),
+          ],
+          chainId: westendAssetHub.id,
+        });
+      } else {
+        writeContractAsync({
+          account: await getSigpassWallet(),
+          address: YIELDFARM_CONTRACT_ADDRESS,
+          abi: yieldFarmingAbi,
+          functionName: "stake",
+          args: [parseUnits(values.amount, decimals as number)],
+          chainId: westendAssetHub.id,
+        });
+      }
     } else {
       // Fallback to connected wallet
-      writeContractAsync({
-        address: USDC_CONTRACT_ADDRESS,
-        abi: erc20AbiExtend,
-        functionName: "transfer",
-        args: [
-          values.address as Address,
-          parseUnits(values.amount, decimals as number),
-        ],
-        chainId: westendAssetHub.id,
-      });
+      if (needsApprove) {
+        writeContractAsync({
+          address: LPTOKEN_CONTRACT_ADDRESS,
+          abi: mockErc20Abi,
+          functionName: "approve",
+          args: [
+            YIELDFARM_CONTRACT_ADDRESS,
+            parseUnits(values.amount, decimals as number),
+          ],
+          chainId: westendAssetHub.id,
+        });
+      } else {
+        writeContractAsync({
+          address: YIELDFARM_CONTRACT_ADDRESS,
+          abi: yieldFarmingAbi,
+          functionName: "stake",
+          args: [parseUnits(values.amount, decimals as number)],
+          chainId: westendAssetHub.id,
+        });
+      }
     }
   }
 
@@ -236,25 +267,11 @@ export default function WriteContract() {
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
           <FormField
             control={form.control}
-            name="address"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Receiving Address</FormLabel>
-                <FormControl>
-                  <Input placeholder="0xA0Cf…251e" {...field} />
-                </FormControl>
-                <FormDescription>The address to send USDC to</FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
             name="amount"
             render={({ field }) => (
               <FormItem>
                 <div className="flex flex-row gap-2 items-center justify-between">
-                  <FormLabel>Amount</FormLabel>
+                  <FormLabel>Amount to stake</FormLabel>
                   <div className="flex flex-row gap-2 items-center text-xs text-muted-foreground">
                     <WalletMinimal className="w-4 h-4" />{" "}
                     {maxBalance ? (
@@ -262,7 +279,7 @@ export default function WriteContract() {
                     ) : (
                       <Skeleton className="w-[80px] h-4" />
                     )}{" "}
-                    USDC
+                    LP Token
                   </div>
                 </div>
                 <FormControl>
@@ -284,21 +301,43 @@ export default function WriteContract() {
                     />
                   )}
                 </FormControl>
-                <FormDescription>The amount of USDC to send</FormDescription>
+                <FormDescription>
+                  The amount of LPToken to stake
+                </FormDescription>
                 <FormMessage />
               </FormItem>
             )}
           />
-          {isPending ? (
-            <Button type="submit" disabled className="w-full">
-              <LoaderCircle className="w-4 h-4 animate-spin" /> Confirm in
-              wallet...
-            </Button>
-          ) : (
-            <Button type="submit" className="w-full">
-              Send
-            </Button>
-          )}
+          <div className="flex flex-row gap-2 items-center justify-between">
+            {isPending ? (
+              <Button type="submit" disabled className="w-full">
+                <LoaderCircle className="w-4 h-4 animate-spin" /> Confirm in
+                wallet...
+              </Button>
+            ) : needsApprove ? (
+              <Button type="submit" className="w-full">
+                Approve
+              </Button>
+            ) : (
+              <Button disabled className="w-full">
+                Approve
+              </Button>
+            )}
+            {isPending ? (
+              <Button type="submit" disabled className="w-full">
+                <LoaderCircle className="w-4 h-4 animate-spin" /> Confirm in
+                wallet...
+              </Button>
+            ) : needsApprove ? (
+              <Button disabled className="w-full">
+                Stake
+              </Button>
+            ) : (
+              <Button type="submit" className="w-full">
+                Stake
+              </Button>
+            )}
+          </div>
         </form>
       </Form>
       {
