@@ -91,9 +91,8 @@ import {
   LPTOKEN_CONTRACT_ADDRESS,
   YIELDFARM_CONTRACT_ADDRESS,
 } from "@/lib/constants";
-import MintMockToken from "./mint-mock-token";
 
-export default function StakeForm() {
+export default function WithdrawForm() {
   // useConfig hook to get config
   const config = useConfig();
 
@@ -156,9 +155,15 @@ export default function StakeForm() {
   const { data, refetch } = useReadContracts({
     contracts: [
       {
-        address: LPTOKEN_CONTRACT_ADDRESS,
-        abi: mockErc20Abi,
-        functionName: "balanceOf",
+        address: YIELDFARM_CONTRACT_ADDRESS,
+        abi: yieldFarmingAbi,
+        functionName: "userInfo",
+        args: [address ? address : account.address],
+      },
+      {
+        address: YIELDFARM_CONTRACT_ADDRESS,
+        abi: yieldFarmingAbi,
+        functionName: "pendingRewards",
         args: [address ? address : account.address],
       },
       {
@@ -166,80 +171,55 @@ export default function StakeForm() {
         abi: mockErc20Abi,
         functionName: "decimals",
       },
-      {
-        // get the allowance of the selected token
-        address: LPTOKEN_CONTRACT_ADDRESS,
-        abi: mockErc20Abi,
-        functionName: "allowance",
-        args: [address ? address : account.address, YIELDFARM_CONTRACT_ADDRESS],
-      },
     ],
     config: address ? localConfig : config,
   });
 
   // get the max balance and decimals from the data
-  const maxBalance = data?.[0]?.result as bigint | undefined;
-  const decimals = data?.[1]?.result as number | undefined;
-  const mintAllowance = data?.[2]?.result as bigint | undefined; // allowance of the selected token
-
-  // extract the amount value from the form
-  const amount = form.watch("amount");
-
-  // check if the amount is greater than the mint allowance
-  const needsApprove =
-    mintAllowance !== undefined && amount
-      ? mintAllowance < parseUnits(amount, decimals || 18)
-      : false;
+  const maxBalance = (data?.[0]?.result as [bigint] | undefined)?.[0];
+  const pendingRewards = data?.[1]?.result as bigint | undefined;
+  const decimals = data?.[2]?.result as number | undefined;
 
   // 2. Define a submit handler.
   async function onSubmit(values: z.infer<typeof formSchema>) {
     if (address) {
-      if (needsApprove) {
-        writeContractAsync({
-          account: await getSigpassWallet(),
-          address: LPTOKEN_CONTRACT_ADDRESS,
-          abi: mockErc20Abi,
-          functionName: "approve",
-          args: [
-            YIELDFARM_CONTRACT_ADDRESS,
-            parseUnits(values.amount, decimals as number),
-          ],
-          chainId: westendAssetHub.id,
-        });
-      } else {
-        writeContractAsync({
-          account: await getSigpassWallet(),
-          address: YIELDFARM_CONTRACT_ADDRESS,
-          abi: yieldFarmingAbi,
-          functionName: "stake",
-          args: [parseUnits(values.amount, decimals as number)],
-          chainId: westendAssetHub.id,
-        });
-      }
+      writeContractAsync({
+        account: await getSigpassWallet(),
+        address: YIELDFARM_CONTRACT_ADDRESS,
+        abi: yieldFarmingAbi,
+        functionName: "withdraw",
+        args: [parseUnits(values.amount, decimals as number)],
+        chainId: westendAssetHub.id,
+      });
     } else {
-      // Fallback to connected wallet
-      if (needsApprove) {
-        writeContractAsync({
-          address: LPTOKEN_CONTRACT_ADDRESS,
-          abi: mockErc20Abi,
-          functionName: "approve",
-          args: [
-            YIELDFARM_CONTRACT_ADDRESS,
-            parseUnits(values.amount, decimals as number),
-          ],
-          chainId: westendAssetHub.id,
-        });
-      } else {
-        writeContractAsync({
-          address: YIELDFARM_CONTRACT_ADDRESS,
-          abi: yieldFarmingAbi,
-          functionName: "stake",
-          args: [parseUnits(values.amount, decimals as number)],
-          chainId: westendAssetHub.id,
-        });
-      }
+      writeContractAsync({
+        address: YIELDFARM_CONTRACT_ADDRESS,
+        abi: yieldFarmingAbi,
+        functionName: "withdraw",
+        args: [parseUnits(values.amount, decimals as number)],
+        chainId: westendAssetHub.id,
+      });
     }
   }
+
+  const handleClaim = async () => {
+    if (address) {
+      writeContractAsync({
+        account: await getSigpassWallet(),
+        address: YIELDFARM_CONTRACT_ADDRESS,
+        abi: yieldFarmingAbi,
+        functionName: "claimRewards",
+        chainId: westendAssetHub.id,
+      });
+    } else {
+      writeContractAsync({
+        address: YIELDFARM_CONTRACT_ADDRESS,
+        abi: yieldFarmingAbi,
+        functionName: "claimRewards",
+        chainId: westendAssetHub.id,
+      });
+    }
+  };
 
   // Watch for transaction hash and open dialog/drawer when received
   useEffect(() => {
@@ -264,7 +244,17 @@ export default function StakeForm() {
 
   return (
     <div className="flex flex-col gap-4 w-[320px] md:w-[425px]">
-      <MintMockToken label="LP Token" />
+      {pendingRewards && pendingRewards > 0 ? (
+        <>
+          <span className="text-sm text-muted-foreground">
+            Total reward:{" "}
+            {formatUnits(pendingRewards as bigint, decimals as number)}
+          </span>
+          <Button className="w-full" onClick={handleClaim} disabled={isPending}>
+            Claim reward
+          </Button>
+        </>
+      ) : null}
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
           <FormField
@@ -273,7 +263,7 @@ export default function StakeForm() {
             render={({ field }) => (
               <FormItem>
                 <div className="flex flex-row gap-2 items-center justify-between">
-                  <FormLabel>Amount to stake</FormLabel>
+                  <FormLabel>Amount to unstake</FormLabel>
                   <div className="flex flex-row gap-2 items-center text-xs text-muted-foreground">
                     <WalletMinimal className="w-4 h-4" />{" "}
                     {maxBalance ? (
@@ -304,7 +294,7 @@ export default function StakeForm() {
                   )}
                 </FormControl>
                 <FormDescription>
-                  The amount of LPToken to stake
+                  The amount of LPToken to unstake
                 </FormDescription>
                 <FormMessage />
               </FormItem>
@@ -316,27 +306,9 @@ export default function StakeForm() {
                 <LoaderCircle className="w-4 h-4 animate-spin" /> Confirm in
                 wallet...
               </Button>
-            ) : needsApprove ? (
-              <Button type="submit" className="w-full">
-                Approve
-              </Button>
-            ) : (
-              <Button disabled className="w-full">
-                Approve
-              </Button>
-            )}
-            {isPending ? (
-              <Button type="submit" disabled className="w-full">
-                <LoaderCircle className="w-4 h-4 animate-spin" /> Confirm in
-                wallet...
-              </Button>
-            ) : needsApprove ? (
-              <Button disabled className="w-full">
-                Stake
-              </Button>
             ) : (
               <Button type="submit" className="w-full">
-                Stake
+                Withdraw
               </Button>
             )}
           </div>
