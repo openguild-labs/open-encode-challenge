@@ -32,8 +32,7 @@ import {
 import Image from 'next/image';
 import { useAtom } from 'jotai';
 import { atomWithStorage, RESET } from 'jotai/utils';
-import { westendAssetHub } from '@/app/providers';
-
+import { westendAssetHub } from "@/lib/chains";
 
 // Set the string key and the initial value
 export const addressAtom = atomWithStorage<Address | undefined>('SIGPASS_ADDRESS', undefined)
@@ -139,9 +138,9 @@ export default function SigpassKit() {
                 <div className="flex flex-col gap-4">
                   <h2 className="font-bold">What is a Wallet?</h2>
                   <div className="flex flex-row gap-4 items-center">
-                    <Image 
-                      src="/rainbowkit-1.svg" 
-                      alt="icon-1" 
+                    <Image
+                      src="/rainbowkit-1.svg"
+                      alt="icon-1"
                       width={50}
                       height={50}
                     />
@@ -151,9 +150,9 @@ export default function SigpassKit() {
                     </div>
                   </div>
                   <div className="flex flex-row gap-4 items-center">
-                    <Image 
-                      src="/rainbowkit-2.svg" 
-                      alt="icon-2" 
+                    <Image
+                      src="/rainbowkit-2.svg"
+                      alt="icon-2"
                       width={50}
                       height={50}
                     />
@@ -166,41 +165,41 @@ export default function SigpassKit() {
               </div>
               <DialogFooter>
                 <div className="flex flex-row gap-2 mt-4 justify-between w-full items-center">
-                  <a href="https://learn.rainbow.me/understanding-web3?utm_source=rainbowkit&utm_campaign=learnmore" className="text-md font-bold" target="_blank" rel="noopener noreferrer">Learn more</a> 
+                  <a href="https://learn.rainbow.me/understanding-web3?utm_source=rainbowkit&utm_campaign=learnmore" className="text-md font-bold" target="_blank" rel="noopener noreferrer">Learn more</a>
                   {
-                  webAuthnSupport ? (
-                    <Button 
-                      className="rounded-xl font-bold text-md hover:scale-105 transition-transform" 
-                      onClick={createWallet} // add a name to the wallet, can be your dapp name or user input
-                    >
-                      <KeyRound />
-                      Create
-                    </Button>
-                  ) : (
-                    <Button disabled className="rounded-xl font-bold text-md hover:scale-105 transition-transform">
-                      <Ban />
-                      Unsupported Browser
-                    </Button>
-                  )
-                }
+                    webAuthnSupport ? (
+                      <Button
+                        className="rounded-xl font-bold text-md hover:scale-105 transition-transform"
+                        onClick={createWallet} // add a name to the wallet, can be your dapp name or user input
+                      >
+                        <KeyRound />
+                        Create
+                      </Button>
+                    ) : (
+                      <Button disabled className="rounded-xl font-bold text-md hover:scale-105 transition-transform">
+                        <Ban />
+                        Unsupported Browser
+                      </Button>
+                    )
+                  }
                 </div>
               </DialogFooter>
               <div className="text-sm text-muted-foreground">
-                Powered by <a href="https://github.com/gmgn-app/sigpass" className="inline-flex items-center gap-1 font-bold underline underline-offset-4"  target="_blank" rel="noopener noreferrer">Sigpass<ExternalLink className="h-4 w-4" /></a>
+                Powered by <a href="https://github.com/gmgn-app/sigpass" className="inline-flex items-center gap-1 font-bold underline underline-offset-4" target="_blank" rel="noopener noreferrer">Sigpass<ExternalLink className="h-4 w-4" /></a>
               </div>
             </DialogContent>
           </Dialog>
         ) : wallet && !account.isConnected && address === undefined ? (
-          <Button 
+          <Button
             className="rounded-xl font-bold text-md hover:scale-105 transition-transform"
             onClick={getWallet}
           >
             Get Wallet
           </Button>
-        ) : wallet && !account.isConnected && address ? 
+        ) : wallet && !account.isConnected && address ?
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-              <Button 
+              <Button
                 className="border-2 border-primary rounded-xl font-bold text-md hover:scale-105 transition-transform"
                 variant="outline"
               >
@@ -239,14 +238,14 @@ export default function SigpassKit() {
               </div>
             </DialogContent>
           </Dialog>
-         : null}
+          : null}
         {
           !address ? <ConnectButton /> : null
         }
       </div>
     )
   }
- 
+
   return (
     <div className="flex flex-row gap-2 items-center">
       {(!wallet && !account.isConnected && !address) ? (
@@ -265,9 +264,9 @@ export default function SigpassKit() {
               <div className="flex flex-col gap-4">
                 <h2 className="font-bold">What is a Wallet?</h2>
                 <div className="flex flex-row gap-4 items-center">
-                  <Image 
-                    src="/rainbowkit-1.svg" 
-                    alt="icon-1" 
+                  <Image
+                    src="/rainbowkit-1.svg"
+                    alt="icon-1"
                     width={50}
                     height={50}
                   />
@@ -277,9 +276,9 @@ export default function SigpassKit() {
                   </div>
                 </div>
                 <div className="flex flex-row gap-4 items-center">
-                  <Image 
-                    src="/rainbowkit-2.svg" 
-                    alt="icon-2" 
+                  <Image
+                    src="/rainbowkit-2.svg"
+                    alt="icon-2"
                     width={50}
                     height={50}
                   />
@@ -288,24 +287,24 @@ export default function SigpassKit() {
                     <p className="text-sm text-muted-foreground">Instead of creating new accounts and passwords on every website, just connect your wallet.</p>
                   </div>
                 </div>
-                <a href="https://learn.rainbow.me/understanding-web3?utm_source=rainbowkit&utm_campaign=learnmore" className="text-md font-bold text-center" target="_blank" rel="noopener noreferrer">Learn more</a> 
+                <a href="https://learn.rainbow.me/understanding-web3?utm_source=rainbowkit&utm_campaign=learnmore" className="text-md font-bold text-center" target="_blank" rel="noopener noreferrer">Learn more</a>
               </div>
             </div>
             <DrawerFooter>
               {webAuthnSupport ? (
-                  <Button 
-                    className="rounded-xl font-bold text-md hover:scale-105 transition-transform" 
-                    onClick={createWallet}
-                  >
-                    <KeyRound />
-                    Create
-                  </Button>
-                ) : (
-                  <Button disabled className="rounded-xl font-bold text-md hover:scale-105 transition-transform">
-                    <Ban />
-                    Unsupported Browser
-                  </Button>
-                )}
+                <Button
+                  className="rounded-xl font-bold text-md hover:scale-105 transition-transform"
+                  onClick={createWallet}
+                >
+                  <KeyRound />
+                  Create
+                </Button>
+              ) : (
+                <Button disabled className="rounded-xl font-bold text-md hover:scale-105 transition-transform">
+                  <Ban />
+                  Unsupported Browser
+                </Button>
+              )}
               <DrawerClose asChild>
                 <Button variant="outline">Close</Button>
               </DrawerClose>
@@ -316,7 +315,7 @@ export default function SigpassKit() {
           </DrawerContent>
         </Drawer>
       ) : wallet && !account.isConnected && address === undefined ? (
-        <Button 
+        <Button
           className="rounded-xl font-bold text-md hover:scale-105 transition-transform"
           onClick={getWallet}
         >
@@ -325,7 +324,7 @@ export default function SigpassKit() {
       ) : wallet && !account.isConnected && address ? (
         <Drawer open={open} onOpenChange={setOpen}>
           <DrawerTrigger asChild>
-            <Button 
+            <Button
               className="border-2 border-primary rounded-xl font-bold text-md hover:scale-105 transition-transform"
               variant="outline"
             >

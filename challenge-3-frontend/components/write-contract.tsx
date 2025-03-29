@@ -116,16 +116,16 @@ export default function WriteContract() {
   const USDC_CONTRACT_ADDRESS = "0xc8576Fb6De558b313afe0302B3fedc6F6447BbEE";
 
   // useReadContracts hook to read contract
-  const { 
+  const {
     data,
     refetch
-  } = useReadContracts({ 
-    contracts: [{ 
+  } = useReadContracts({
+    contracts: [{
       address: USDC_CONTRACT_ADDRESS,
       abi: erc20AbiExtend,
       functionName: 'balanceOf',
       args: [address ? address : account.address],
-    }, { 
+    }, {
       address: USDC_CONTRACT_ADDRESS,
       abi: erc20AbiExtend,
       functionName: 'decimals',
@@ -158,7 +158,7 @@ export default function WriteContract() {
       })
       .superRefine((val, ctx) => {
         if (!maxBalance || !decimals) return;
-        
+
         const inputAmount = parseUnits(val, decimals as number);
 
         if (inputAmount > (maxBalance as bigint)) {
