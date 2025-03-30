@@ -4,9 +4,11 @@ import { tokenVestingAbi } from '@/lib/tokenVestingAbi';
 import { VestingSchedule } from '@/types/token-vesting';
 import React, { useEffect } from 'react'
 import { useAccount, useConfig, useReadContract } from 'wagmi';
-import { Separator } from '../ui/separator';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
-import { Button } from 'react-day-picker';
+import { Button } from '@/components/ui/button';
+import { localConfig } from '@/app/providers';
+import { useAtomValue } from 'jotai';
+import { addressAtom } from '../sigpasskit';
+import { Address } from 'viem';
 
 export default function TokenVestingDetails() {
 
@@ -14,8 +16,12 @@ export default function TokenVestingDetails() {
 
     const account = useAccount();
 
+    // get the address from session storage
+    const address = useAtomValue(addressAtom);
+
     const { data: vestingSchedulesData, refetch: vestingSchedulesRefetch } = useReadContract({
-        address: contractAddresses.TOKEN_VESTING as `0x${string}`,
+        config: address ? localConfig : config,
+        address: contractAddresses.TOKEN_VESTING as Address,
         abi: tokenVestingAbi,
         functionName: 'vestingSchedules',
         args: [account.address],
@@ -30,9 +36,7 @@ export default function TokenVestingDetails() {
         }
     }, [account.isConnected, vestingSchedulesRefetch]);
 
-    console.log(vestingSchedulesData as VestingSchedule);
-
-    if (!account.isConnected || !vestingSchedulesData || !(vestingSchedulesData as VestingSchedule).startTime) {
+    if (!account.isConnected || !vestingSchedulesData) {
         return (
             <div className="text-center py-10">
                 <p className="text-lg font-medium">No vesting schedule found</p>
@@ -52,8 +56,8 @@ export default function TokenVestingDetails() {
                 <div className="flex flex-col">
                     <span className="text-sm text-gray-500">Start Time</span>
                     <span className="font-medium">
-                        {(vestingSchedulesData as VestingSchedule).startTime
-                            ? new Date(Number((vestingSchedulesData as VestingSchedule).startTime) * 1000).toLocaleString()
+                        {(vestingSchedulesData as any)?.[0] as number
+                            ? new Date(Number((vestingSchedulesData as any)?.[0] as number) * 1000).toLocaleString()
                             : 'Not set'}
                     </span>
                 </div>

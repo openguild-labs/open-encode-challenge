@@ -1,5 +1,5 @@
 'use client';
-import React from 'react'
+import React, { useEffect } from 'react'
 import { contractAddresses } from '@/lib/contractAddresses';
 import { tokenVestingAbi } from '@/lib/tokenVestingAbi';
 import { useAccount, useConfig, useReadContract } from 'wagmi';
@@ -7,13 +7,16 @@ import { Button } from '../ui/button';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import TokenVestingDetails from './token-vesting-details';
+import { isAddressEqual } from 'viem';
 
 export default function TokenVestingMenu() {
     const router = useRouter();
 
     const config = useConfig();
 
-    const account = useAccount();
+    const account = useAccount({
+        config
+    });
 
     const { data: ownerData, refetch: refetchOwner } = useReadContract({
         address: contractAddresses.TOKEN_VESTING as `0x${string}`,
@@ -29,8 +32,8 @@ export default function TokenVestingMenu() {
         <div className="flex flex-col items-center justify-center gap-4">
             <p className="self-center text-xl font-bold">Token Vesting Schedule</p>
             <Button
-                asChild={account.isConnected && account.address == ownerData}
-                disabled={!(account.isConnected && account.address == ownerData)}
+                asChild={account.isConnected && ownerData as any && isAddressEqual(account.address!!, ownerData as `0x${string}`)}
+                disabled={!(account.isConnected && ownerData as any && isAddressEqual(account.address!!, ownerData as `0x${string}`))}
             >
                 <Link
                     href={"/token-vesting/owner"}

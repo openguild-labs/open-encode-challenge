@@ -5,6 +5,5 @@ export interface VestingSchedule {
   totalAmount?: bigint;
   claimed?: bigint;
   revokedTime?: bigint;
-  revokedAmount?: bigint;
   token?: string | `0x${string}`;
 }

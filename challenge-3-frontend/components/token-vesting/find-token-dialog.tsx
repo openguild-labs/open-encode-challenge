@@ -35,6 +35,5 @@ export default function FindTokenDialog({
                 </DialogHeader>
             </DialogContent>
         </Dialog>
-
     )
 }
