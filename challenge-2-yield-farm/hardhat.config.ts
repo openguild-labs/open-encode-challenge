@@ -7,7 +7,7 @@ const config: HardhatUserConfig = {
   solidity: {
     version: "0.8.20",
     settings: {
-      optimizer: {
+      optimizer: {  
         enabled: true,
         runs: 1, // Lower optimization runs for simpler bytecode
       },
