@@ -2,7 +2,7 @@
 import { useAtomValue } from 'jotai';
 import React, { useEffect, useState } from 'react'
 import { useAccount, useConfig, useReadContract, useWaitForTransactionReceipt, useWriteContract } from 'wagmi';
-import { addressAtom } from '../sigpasskit';
+import { addressAtom } from '../../sigpasskit';
 import { z } from 'zod';
 import { Address, BaseError, isAddress } from 'viem';
 import { useForm } from 'react-hook-form';
@@ -10,17 +10,17 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { localConfig } from '@/app/providers';
 import { contractAddresses } from '@/lib/contractAddresses';
 import { tokenVestingAbi } from '@/lib/tokenVestingAbi';
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '../ui/form';
-import { Button } from '../ui/button';
-import { Input } from '../ui/input';
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '../../ui/form';
+import { Button } from '../../ui/button';
+import { Input } from '../../ui/input';
 import { getSigpassWallet } from '@/lib/sigpass';
 import { westendAssetHub } from '@/lib/chains';
 import { Ban, ChevronDown, CircleCheck, ExternalLink, Hash, LoaderCircle, X } from 'lucide-react';
-import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog';
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '../../ui/dialog';
 import { useMediaQuery } from '@/hooks/use-media-query';
 import { truncateHash } from '@/lib/utils';
-import CopyButton from '../copy-button';
-import { Drawer, DrawerTrigger, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription, DrawerFooter, DrawerClose } from '../ui/drawer';
+import CopyButton from '../../copy-button';
+import { Drawer, DrawerTrigger, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription, DrawerFooter, DrawerClose } from '../../ui/drawer';
 
 export default function ActBeneficiaryTab() {
 
@@ -165,9 +165,11 @@ export default function ActBeneficiaryTab() {
                                         className="mt-2 transition-all border-2 focus-within:border-purple-500 focus-within:ring-2 focus-within:ring-purple-300 dark:focus-within:ring-purple-800"
                                     />
                                 </FormControl>
+                                <div className="mt-1 text-xs text-blue-600 dark:text-blue-400">
+                                    Note: Input to check if the address is already a beneficiary.
+                                </div>
                                 <FormDescription className="mt-2 text-sm">
                                     Address of the vesting beneficiary.
-                                    Note: Input to check if the address is already a beneficiary.
                                 </FormDescription>
                                 <FormMessage className="text-red-500 font-medium animate-pulse" />
                             </FormItem>
@@ -183,8 +185,8 @@ export default function ActBeneficiaryTab() {
                                 disabled={(whitelistedData as any) == null || (whitelistedData as any) == undefined}
                                 type="submit"
                                 className={`w-full h-14 rounded-xl font-medium text-lg shadow-lg transition-all active:scale-[0.98] ease-in-out duration-200 ${whitelistedData === false
-                                        ? "bg-gradient-to-r from-purple-600 to-blue-500 hover:from-purple-700 hover:to-blue-600 text-white shadow-purple-500/20 hover:shadow-purple-500/40"
-                                        : "bg-gradient-to-r from-red-600 to-orange-500 hover:from-red-700 hover:to-orange-600 text-white shadow-red-500/20 hover:shadow-red-500/40"
+                                    ? "bg-gradient-to-r from-purple-600 to-blue-500 hover:from-purple-700 hover:to-blue-600 text-white shadow-purple-500/20 hover:shadow-purple-500/40"
+                                    : "bg-gradient-to-r from-red-600 to-orange-500 hover:from-red-700 hover:to-orange-600 text-white shadow-red-500/20 hover:shadow-red-500/40"
                                     }`}
                             >
                                 {

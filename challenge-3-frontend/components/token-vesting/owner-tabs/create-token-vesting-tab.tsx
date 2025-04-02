@@ -8,7 +8,7 @@ import React, { useEffect, useState } from 'react'
 import { Address, BaseError, formatEther, isAddress, parseEther, parseUnits } from 'viem';
 import { useConfig, useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt, useReadContracts } from 'wagmi';
 import { z } from 'zod';
-import { addressAtom } from '../sigpasskit';
+import { addressAtom } from '../../sigpasskit';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from "@/components/ui/button"
@@ -31,12 +31,12 @@ import {
 import { cn, truncateHash } from '@/lib/utils';
 import { format } from "date-fns"
 import { Ban, CalendarIcon, ChevronDown, ChevronLeftIcon, CircleCheck, CloudLightning, ExternalLink, FormInput, Hash, LoaderCircle, X } from 'lucide-react';
-import { ScrollBar, ScrollArea } from '../ui/scroll-area';
-import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog';
+import { ScrollBar, ScrollArea } from '../../ui/scroll-area';
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '../../ui/dialog';
 import { westendAssetHub } from '@/lib/chains';
 import { getSigpassWallet } from '@/lib/sigpass';
-import CopyButton from '../copy-button';
-import { Drawer, DrawerTrigger, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription, DrawerFooter, DrawerClose } from '../ui/drawer';
+import CopyButton from '../../copy-button';
+import { Drawer, DrawerTrigger, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription, DrawerFooter, DrawerClose } from '../../ui/drawer';
 import { mockERC20Abi } from '@/lib/mockERC20Abi';
 
 export default function CreateTokenVestingTab() {
@@ -301,7 +301,7 @@ export default function CreateTokenVestingTab() {
 
     function handleTimeChange(setValueName: any, type: "hour" | "minute" | "ampm", value: string,) {
         const currentDate = form.getValues(setValueName) || new Date();
-        let newDate = new Date(currentDate);
+        const newDate = new Date(currentDate);
 
         if (type === "hour") {
             const hour = parseInt(value, 10);
@@ -370,12 +370,12 @@ export default function CreateTokenVestingTab() {
                                         className="mt-2 transition-all border-2 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-300 dark:focus-within:ring-blue-800"
                                     />
                                 </FormControl>
-                                <FormDescription className="mt-2 text-sm">
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <div className="rounded-full bg-gradient-to-r from-blue-400 to-indigo-500 px-3 py-1 text-xs text-white font-medium animate-pulse">
-                                            Balance: {maxBalance ? `${formatEther(maxBalance as bigint)}` : "0"}
-                                        </div>
+                                <div className="flex items-center gap-2 mb-1">
+                                    <div className="rounded-full bg-gradient-to-r from-blue-400 to-indigo-500 px-3 py-1 text-xs text-white font-medium animate-pulse">
+                                        Balance: {maxBalance ? `${formatEther(maxBalance as bigint)}` : "0"}
                                     </div>
+                                </div>
+                                <FormDescription className="mt-2 text-sm">
                                     Address of the token to be vested.
                                 </FormDescription>
                                 <FormMessage className="text-red-500 font-medium animate-pulse" />

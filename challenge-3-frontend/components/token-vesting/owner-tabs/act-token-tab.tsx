@@ -13,16 +13,16 @@ import { useAtomValue } from 'jotai';
 import { useForm } from 'react-hook-form';
 import { LoaderCircle, ChevronDown, ExternalLink, Ban, Hash, CircleCheck, X } from 'lucide-react';
 import React, { useEffect, useState } from 'react'
-import { Button } from '../ui/button';
+import { Button } from '../../ui/button';
 import { isAddress } from 'viem';
 import { BaseError, useAccount, useConfig, useReadContract, useWaitForTransactionReceipt, useWriteContract } from 'wagmi';
 import { z } from 'zod';
-import CopyButton from '../copy-button';
-import { addressAtom } from '../sigpasskit';
-import { DialogHeader, DialogFooter } from '../ui/dialog';
-import { Drawer, DrawerTrigger, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription, DrawerFooter, DrawerClose } from '../ui/drawer';
-import { Form, FormField, FormItem, FormLabel, FormControl, FormDescription, FormMessage } from '../ui/form';
-import { Input } from '../ui/input';
+import CopyButton from '../../copy-button';
+import { addressAtom } from '../../sigpasskit';
+import { DialogHeader, DialogFooter } from '../../ui/dialog';
+import { Drawer, DrawerTrigger, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription, DrawerFooter, DrawerClose } from '../../ui/drawer';
+import { Form, FormField, FormItem, FormLabel, FormControl, FormDescription, FormMessage } from '../../ui/form';
+import { Input } from '../../ui/input';
 
 export default function ActTokenTab() {
     const config = useConfig();
@@ -156,11 +156,11 @@ export default function ActTokenTab() {
                                         className="mt-2 transition-all border-2 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-300 dark:focus-within:ring-blue-800"
                                     />
                                 </FormControl>
+                                <div className="mt-1 text-xs text-blue-600 dark:text-blue-400">
+                                    Note: Input to check if the token is already whitelisted.
+                                </div>
                                 <FormDescription className="mt-2 text-sm">
                                     Address of the vesting token.
-                                    <div className="mt-1 text-xs text-blue-600 dark:text-blue-400">
-                                        Note: Input to check if the token is already whitelisted.
-                                    </div>
                                 </FormDescription>
                                 <FormMessage className="text-red-500 font-medium animate-pulse" />
                             </FormItem>
