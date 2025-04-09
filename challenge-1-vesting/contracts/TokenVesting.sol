@@ -124,11 +124,16 @@ contract TokenVesting is Ownable(msg.sender), Pausable, ReentrancyGuard {
         VestingSchedule memory schedule = vestingSchedules[beneficiary];
         require(!schedule.revoked, "Vesting schedule revoked");
 
-        if( schedule.startTime + schedule.cliffDuration < block.timestamp) {
+        uint256 currentTime = block.timestamp;
+        if(currentTime < schedule.startTime + schedule.cliffDuration) {
             return 0;
         }
 
-        uint256 vestedDuration = block.timestamp - schedule.startTime;
+        if(currentTime >= schedule.startTime + schedule.vestingDuration) {
+            return schedule.totalAmount;
+        }
+
+        uint256 vestedDuration = currentTime - schedule.startTime;
         uint256 vestedAmount = (schedule.totalAmount * vestedDuration) / schedule.vestingDuration;
 
         return vestedAmount;
@@ -139,6 +144,7 @@ contract TokenVesting is Ownable(msg.sender), Pausable, ReentrancyGuard {
         address beneficiary = msg.sender;
         VestingSchedule storage schedule = vestingSchedules[beneficiary];
 
+        require(schedule.startTime + schedule.cliffDuration < block.timestamp, "No tokens to claim");
         require(!schedule.revoked, "Vesting schedule revoked");
         require(schedule.totalAmount > 0, "Total amount must be larger than 0");
 
@@ -154,16 +160,15 @@ contract TokenVesting is Ownable(msg.sender), Pausable, ReentrancyGuard {
 
     function revokeVesting(address beneficiary) external onlyOwner {
         // TODO: Implement vesting revocation
-        VestingSchedule memory schedule = vestingSchedules[beneficiary];
+        VestingSchedule storage schedule = vestingSchedules[beneficiary];
         require(!schedule.revoked, "Vesting schedule revoked");
 
-        schedule.revoked = true;
-        vestingSchedules[beneficiary] = schedule;
-        emit VestingRevoked(beneficiary);
 
         uint256 vestedAmount = calculateVestedAmount(beneficiary);
         uint256 unclaimedAmount = vestedAmount - schedule.amountClaimed;
         uint256 unvestedAmount = schedule.totalAmount - vestedAmount;
+        
+        schedule.revoked = true;
         
         if (unclaimedAmount > 0) {
             token.safeTransfer(beneficiary, unclaimedAmount);
@@ -171,6 +176,8 @@ contract TokenVesting is Ownable(msg.sender), Pausable, ReentrancyGuard {
         if (unvestedAmount > 0) {
             token.safeTransfer(owner(), unvestedAmount);
         }
+
+        emit VestingRevoked(beneficiary);
     }
 
     function pause() external onlyOwner {

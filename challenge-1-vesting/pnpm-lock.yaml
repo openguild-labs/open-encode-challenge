@@ -22,7 +22,7 @@ importers:
         specifier: ^5.0.0
         version: 5.0.0(b97983278a443d774ac498131468112c)
       hardhat:
-        specifier: ^2.22.17
+        specifier: ^2.22.19
         version: 2.22.19(ts-node@10.9.2(@types/node@22.14.0)(typescript@5.8.3))(typescript@5.8.3)
 
 packages:
