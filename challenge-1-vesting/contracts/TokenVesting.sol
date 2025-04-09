@@ -24,24 +24,33 @@ Here's your starter code:
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 contract TokenVesting is Ownable(msg.sender), Pausable, ReentrancyGuard {
     struct VestingSchedule {
-    // TODO: Define the vesting schedule struct
+        // TODO: Define the vesting schedule struct
+        uint256 totalAmount;
+        uint256 startTime;
+        uint256 cliffDuration;
+        uint256 vestingDuration;
+        uint256 amountClaimed;
+        bool revoked;
     }
 
     // Token being vested
-    // TODO: Add state variables
-
+    using SafeERC20 for IERC20;
+    IERC20 public token;
 
     // Mapping from beneficiary to vesting schedule
     // TODO: Add state variables
+    mapping(address => VestingSchedule) public vestingSchedules;
 
     // Whitelist of beneficiaries
     // TODO: Add state variables
+    mapping(address => bool) public whitelist;
 
     // Events
     event VestingScheduleCreated(address indexed beneficiary, uint256 amount);
@@ -51,8 +60,9 @@ contract TokenVesting is Ownable(msg.sender), Pausable, ReentrancyGuard {
     event BeneficiaryRemovedFromWhitelist(address indexed beneficiary);
 
     constructor(address tokenAddress) {
-           // TODO: Initialize the contract
-
+        // TODO: Initialize the contract
+        require(tokenAddress != address(0), "Invalid token address");
+        token = IERC20(tokenAddress);
     }
 
     // Modifier to check if beneficiary is whitelisted
@@ -80,21 +90,87 @@ contract TokenVesting is Ownable(msg.sender), Pausable, ReentrancyGuard {
         uint256 startTime
     ) external onlyOwner onlyWhitelisted(beneficiary) whenNotPaused {
         // TODO: Implement vesting schedule creation
+        require(
+            startTime > block.timestamp,
+            "Start time must be in the future"
+        );
+        require(cliffDuration > 0, "Cliff duration must be greater than 0");
+        require(vestingDuration > 0, "Vesting duration must be greater than 0");
+        require(amount > 0, "Amount must be greater than 0");
+        require(
+            vestingDuration > cliffDuration,
+            "Vesting duration must be greater than cliff duration"
+        );
+
+        VestingSchedule memory schedule = VestingSchedule(
+            amount,
+            startTime,
+            cliffDuration,
+            vestingDuration,
+            0,
+            false
+        );
+        vestingSchedules[beneficiary] = schedule;
+
+        token.safeTransferFrom(owner(), address(this), amount);
+
+        emit VestingScheduleCreated(beneficiary, amount);
     }
 
     function calculateVestedAmount(
         address beneficiary
     ) public view returns (uint256) {
         // TODO: Implement vested amount calculation
+        VestingSchedule memory schedule = vestingSchedules[beneficiary];
+        require(!schedule.revoked, "Vesting schedule revoked");
+
+        if( schedule.startTime + schedule.cliffDuration < block.timestamp) {
+            return 0;
+        }
+
+        uint256 vestedDuration = block.timestamp - schedule.startTime;
+        uint256 vestedAmount = (schedule.totalAmount * vestedDuration) / schedule.vestingDuration;
+
+        return vestedAmount;
     }
 
     function claimVestedTokens() external nonReentrant whenNotPaused {
-           // TODO: Implement token claiming
+        // TODO: Implement token claiming
+        address beneficiary = msg.sender;
+        VestingSchedule storage schedule = vestingSchedules[beneficiary];
+
+        require(!schedule.revoked, "Vesting schedule revoked");
+        require(schedule.totalAmount > 0, "Total amount must be larger than 0");
+
+        uint256 vestedAmount = calculateVestedAmount(msg.sender);
+        uint256 receivableAmount = vestedAmount - schedule.amountClaimed;
+        schedule.amountClaimed += vestedAmount;
+
+        token.safeTransfer(beneficiary, receivableAmount);
+
+        emit TokensClaimed(beneficiary, vestedAmount);
+
     }
 
     function revokeVesting(address beneficiary) external onlyOwner {
         // TODO: Implement vesting revocation
+        VestingSchedule memory schedule = vestingSchedules[beneficiary];
+        require(!schedule.revoked, "Vesting schedule revoked");
 
+        schedule.revoked = true;
+        vestingSchedules[beneficiary] = schedule;
+        emit VestingRevoked(beneficiary);
+
+        uint256 vestedAmount = calculateVestedAmount(beneficiary);
+        uint256 unclaimedAmount = vestedAmount - schedule.amountClaimed;
+        uint256 unvestedAmount = schedule.totalAmount - vestedAmount;
+        
+        if (unclaimedAmount > 0) {
+            token.safeTransfer(beneficiary, unclaimedAmount);
+        }
+        if (unvestedAmount > 0) {
+            token.safeTransfer(owner(), unvestedAmount);
+        }
     }
 
     function pause() external onlyOwner {
