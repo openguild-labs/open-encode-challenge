@@ -23,6 +23,12 @@ export default function Navbar() {
       </Link>
       <Link
         className="text-sm underline underline-offset-4"
+        href="/token-vesting"
+      >
+        Token Vesting
+      </Link>
+      <Link
+        className="text-sm underline underline-offset-4"
         href="/mint-redeem-lst-bifrost"
       >
         Mint/Redeem LST Bifrost
