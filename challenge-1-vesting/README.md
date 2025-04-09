@@ -10,7 +10,7 @@ Add your information to the below list to officially participate in the workshop
 
 | Emoji | Name    | Github Username                       | Occupations       |
 | ----- | ------- | ------------------------------------- | ----------------- |
-| 🎅    | marlowl | [NTP-996](https://github.com/marlowl) | Software Engineer |
+| 🔧    | marlowl | [marlowl](https://github.com/marlowl) | Software Engineer |
 
 ## 💻 Local development environment setup
 
