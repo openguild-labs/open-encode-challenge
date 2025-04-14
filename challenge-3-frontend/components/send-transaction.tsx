@@ -7,7 +7,9 @@ import {
   useWaitForTransactionReceipt,
   useConfig
 } from "wagmi";
-import { parseEther, isAddress, Address } from "viem";
+import { parseEther, 
+  isAddress, 
+  Address } from "viem";
 import {
   Ban,
   ExternalLink,
@@ -63,7 +65,15 @@ import { localConfig } from '@/app/providers';
 // form schema for sending transaction
 const formSchema = z.object({
   // address is a required field
-  address: z
+  tokenAddress: z
+    .string()
+    .min(2)
+    .max(50)
+    .refine((val) => val === "" || isAddress(val), {
+      message: "Invalid Ethereum address format",
+    }) as z.ZodType<Address | "">,
+    // beneficiary and amount are required field
+    beneficiary: z
     .string()
     .min(2)
     .max(50)
@@ -71,6 +81,7 @@ const formSchema = z.object({
       message: "Invalid Ethereum address format",
     }) as z.ZodType<Address | "">,
   // amount is a required field
+
   amount: z
     .string()
     .refine((val) => !isNaN(parseFloat(val)) && parseFloat(val) > 0, {
@@ -79,9 +90,21 @@ const formSchema = z.object({
     .refine((val) => /^\d*\.?\d{0,18}$/.test(val), {
       message: "Amount cannot have more than 18 decimal places",
     }),
+
+    startDate: z.date({
+      required_error: "Start date is required",
+    }),
+    cliffDate: z.date({
+      required_error: "Cliff date is required",
+    }),
+    vestingDuration: z
+      .string()
+      .refine((val) => !isNaN(parseInt(val)) && parseInt(val) > 0, {
+        message: "Vesting duration must be a positive number (in seconds)",
+      }),
 });
 
-export default function SendTransaction() {
+export default function TokenVesting() {
 
   // useConfig hook to get config
   const config = useConfig();
@@ -111,25 +134,30 @@ export default function SendTransaction() {
     resolver: zodResolver(formSchema),
     // default values for address and amount
     defaultValues: {
-      address: "",
+      tokenAddress: "",
       amount: "",
+      beneficiary: "",
+      startDate: new Date(),
+      cliffDate: new Date(),
+      vestingDuration: "",
+
     },
   });
 
 
   // 2. Define a submit handler.
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    if (address) {
+    if (values.tokenAddress) {
       sendTransactionAsync({
         account: await getSigpassWallet(),
-        to: values.address as Address,
+        to: values.tokenAddress as Address,
         value: parseEther(values.amount),
         chainId: westendAssetHub.id,
       });
     } else {
       // Fallback to connected wallet
       sendTransactionAsync({
-        to: values.address as Address,
+        to: values.tokenAddress as Address,
         value: parseEther(values.amount),
       });
     }
@@ -155,46 +183,118 @@ export default function SendTransaction() {
     <div className="flex flex-col gap-4 w-[320px] md:w-[425px]">
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-          <FormField
+        <FormField
             control={form.control}
-            name="address"
+            name="beneficiary"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Receiving Address</FormLabel>
+                <FormLabel>Beneficiary Address</FormLabel>
                 <FormControl>
                   <Input placeholder="0xA0Cf…251e" {...field} />
                 </FormControl>
-                <FormDescription>The address to send WND to.</FormDescription>
+                <FormDescription>
+                  The address of the beneficiary receiving the tokens.
+                </FormDescription>
                 <FormMessage />
               </FormItem>
             )}
           />
+
+          {/* Token Address */}
+          <FormField
+            control={form.control}
+            name="tokenAddress"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Token Address</FormLabel>
+                <FormControl>
+                  <Input placeholder="0xTokenAddress" {...field} />
+                </FormControl>
+                <FormDescription>
+                  The address of the ERC20 token to vest.
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* Token Amount */}
           <FormField
             control={form.control}
             name="amount"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Amount</FormLabel>
+                <FormLabel>Token Amount</FormLabel>
                 <FormControl>
-                  {isDesktop ? (
-                    <Input
-                      type="number"
-                      placeholder="0.001"
-                      {...field}
-                      required
-                    />
-                  ) : (
-                    <Input
-                      type="text"
-                      inputMode="decimal"
-                      pattern="[0-9]*[.]?[0-9]*"
-                      placeholder="0.001"
-                      {...field}
-                      required
-                    />
-                  )}
+                  <Input type="number" placeholder="1000" {...field} />
                 </FormControl>
-                <FormDescription>The amount of WND to send.</FormDescription>
+                <FormDescription>
+                  The total amount of tokens to vest.
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* Start Date */}
+          <FormField
+            control={form.control}
+            name="startDate"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Start Date</FormLabel>
+                <FormControl>
+                  <Input
+                    type="date"
+                    placeholder="YYYY-MM-DD"
+                    value={field.value ? field.value.toISOString().split("T")[0] : ""}
+                    onChange={(e) => field.onChange(new Date(e.target.value))}
+                  />
+                </FormControl>
+                <FormDescription>
+                  The date when the vesting starts in days.
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* Cliff Date */}
+          <FormField
+            control={form.control}
+            name="cliffDate"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Cliff Date</FormLabel>   
+                <FormControl>
+                  <Input
+                    type="date"
+                    placeholder="YYYY-MM-DD"
+                    value={field.value ? field.value.toISOString().split("T")[0] : ""}
+                    onChange={(e) => field.onChange(new Date(e.target.value))}
+                  />
+                </FormControl>
+                <FormDescription>
+                  The date when the cliff period ends in days.
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* Vesting Duration */}
+          <FormField
+            control={form.control}
+            name="vestingDuration"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Vesting Duration (in days)</FormLabel>
+                <FormControl>
+                  <Input type="number" placeholder="31536000" {...field} />
+                </FormControl>
+                <FormDescription>
+                  The total duration of the vesting schedule in days.
+                </FormDescription>
                 <FormMessage />
               </FormItem>
             )}
@@ -205,7 +305,7 @@ export default function SendTransaction() {
                 <LoaderCircle className="w-4 h-4 animate-spin" /> Confirm in wallet...
               </Button>
             ) : (
-              <Button type="submit" className="w-full">Send</Button>
+              <Button type="submit" className="w-full">Vest Tokens</Button>
             )
           }
         </form>
