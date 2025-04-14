@@ -38,16 +38,10 @@ contract TokenVesting is Ownable(msg.sender), Pausable, ReentrancyGuard {
         bool revoked;
     }
 
-    // Token being vested
     IERC20 public immutable token;
-
-    // Mapping from beneficiary to vesting schedule
     mapping(address => VestingSchedule) public vestingSchedules;
-
-    // Whitelist of beneficiaries
     mapping(address => bool) public whitelist;
 
-    // Events
     event VestingScheduleCreated(address indexed beneficiary, uint256 amount);
     event TokensClaimed(address indexed beneficiary, uint256 amount);
     event VestingRevoked(address indexed beneficiary);
@@ -58,7 +52,6 @@ contract TokenVesting is Ownable(msg.sender), Pausable, ReentrancyGuard {
         token = IERC20(tokenAddress);
     }
 
-    // Modifier to check if beneficiary is whitelisted
     modifier onlyWhitelisted(address beneficiary) {
         require(whitelist[beneficiary], "Beneficiary not whitelisted");
         _;
@@ -100,7 +93,10 @@ contract TokenVesting is Ownable(msg.sender), Pausable, ReentrancyGuard {
             revoked: false
         });
 
-        token.transferFrom(msg.sender, address(this), amount);
+        require(
+            token.transferFrom(msg.sender, address(this), amount),
+            "Transfer failed"
+        );
         emit VestingScheduleCreated(beneficiary, amount);
     }
 
@@ -108,14 +104,9 @@ contract TokenVesting is Ownable(msg.sender), Pausable, ReentrancyGuard {
         address beneficiary
     ) public view returns (uint256) {
         VestingSchedule memory schedule = vestingSchedules[beneficiary];
-        if (schedule.totalAmount == 0 || schedule.revoked) {
+        if (schedule.totalAmount == 0 || schedule.revoked) return 0;
+        if (block.timestamp < schedule.startTime + schedule.cliffDuration)
             return 0;
-        }
-
-        if (block.timestamp < schedule.startTime + schedule.cliffDuration) {
-            return 0;
-        }
-
         if (block.timestamp >= schedule.startTime + schedule.vestingDuration) {
             return schedule.totalAmount - schedule.amountClaimed;
         }
@@ -123,7 +114,6 @@ contract TokenVesting is Ownable(msg.sender), Pausable, ReentrancyGuard {
         uint256 timeFromStart = block.timestamp - schedule.startTime;
         uint256 vestedAmount = (schedule.totalAmount * timeFromStart) /
             schedule.vestingDuration;
-
         return vestedAmount - schedule.amountClaimed;
     }
 
@@ -137,7 +127,6 @@ contract TokenVesting is Ownable(msg.sender), Pausable, ReentrancyGuard {
 
         schedule.amountClaimed += vestedAmount;
         require(token.transfer(msg.sender, vestedAmount), "Transfer failed");
-
         emit TokensClaimed(msg.sender, vestedAmount);
     }
 
@@ -166,6 +155,36 @@ contract TokenVesting is Ownable(msg.sender), Pausable, ReentrancyGuard {
 
     function unpause() external onlyOwner {
         _unpause();
+    }
+
+    // View functions
+    function getVestingSchedule(
+        address beneficiary
+    )
+        external
+        view
+        returns (
+            uint256 totalAmount,
+            uint256 cliffDuration,
+            uint256 vestingDuration,
+            uint256 startTime,
+            uint256 amountClaimed,
+            bool revoked
+        )
+    {
+        VestingSchedule memory schedule = vestingSchedules[beneficiary];
+        return (
+            schedule.totalAmount,
+            schedule.cliffDuration,
+            schedule.vestingDuration,
+            schedule.startTime,
+            schedule.amountClaimed,
+            schedule.revoked
+        );
+    }
+
+    function isWhitelisted(address beneficiary) external view returns (bool) {
+        return whitelist[beneficiary];
     }
 }
 
