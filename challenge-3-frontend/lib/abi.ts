@@ -1,5 +1,5 @@
 // ERC-20 token ABI
-export const erc20Abi = [
+export const tokenVestingAbi = [
     {
       "inputs": [
         {

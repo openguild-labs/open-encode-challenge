@@ -5,9 +5,13 @@ import {
   type BaseError,
   useSendTransaction,
   useWaitForTransactionReceipt,
-  useConfig
+  useConfig,
+  useWriteContract,
+  usePrepareSendTransaction,
+  usePrepareContractWrite,
 } from "wagmi";
-import { parseEther, 
+import { 
+  parseEther, 
   isAddress, 
   Address } from "viem";
 import {
@@ -61,6 +65,10 @@ import { westendAssetHub } from "@/app/providers";
 import { useAtomValue } from 'jotai';
 import { addressAtom } from '@/components/sigpasskit';
 import { localConfig } from '@/app/providers';
+
+// Import tokenVestingABI
+import { tokenVestingAbi } from "@/lib/abi";
+import { useToast } from "@/hooks/use-toast";
 
 // form schema for sending transaction
 const formSchema = z.object({
@@ -122,11 +130,12 @@ export default function TokenVesting() {
     data: hash,
     error,
     isPending,
-    sendTransactionAsync,
-  } = useSendTransaction({
+    writeContractAsync,
+  } = useWriteContract({
     config: address ? localConfig : config,
   });
 
+  const TOKEN_VESTING_CONTRACT_ADRESS = "0xD6C6af3bAF7D5Cfc178476893B0f43561ACeEefa"
 
   // 1. Define your form.
   const form = useForm<z.infer<typeof formSchema>>({
@@ -148,16 +157,20 @@ export default function TokenVesting() {
   // 2. Define a submit handler.
   async function onSubmit(values: z.infer<typeof formSchema>) {
     if (values.tokenAddress) {
-      sendTransactionAsync({
+      writeContractAsync({
         account: await getSigpassWallet(),
-        to: values.tokenAddress as Address,
+        address: TOKEN_VESTING_CONTRACT_ADRESS,
+        abi: tokenVestingAbi,
+        functionName: "addToWhitelist",
+        args: [
+          values.beneficiary],
         value: parseEther(values.amount),
         chainId: westendAssetHub.id,
       });
     } else {
       // Fallback to connected wallet
-      sendTransactionAsync({
-        to: values.tokenAddress as Address,
+      writeContractAsync({
+        address: values.tokenAddress as Address,
         value: parseEther(values.amount),
       });
     }
