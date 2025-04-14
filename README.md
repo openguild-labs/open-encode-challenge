@@ -6,6 +6,15 @@
 
 </div>
 
+## Participant Registration
+
+Add your information to the below list to officially participate in the workshop challenge (This is the first mission of the whole workshop)
+
+| Emoji | Name     | Github Username                                 | Occupations      |
+| ----- | -------- | ----------------------------------------------- | ---------------- |
+| 🎅    | Aji Guruh Prasetyo | [ajiguruhprasetyo](https://github.com/ajiguruhprasetyo) | OpenGuild Member |
+
+
 ## (Optional) Setup environment and register for the challenges
 
 TLDR: If you are not familiar with Git & Github, follow these steps below to fork and setup your own repository.
