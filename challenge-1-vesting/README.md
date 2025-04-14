@@ -11,6 +11,7 @@ Add your information to the below list to officially participate in the workshop
 | Emoji | Name | Github Username                       | Occupations |
 | ----- | ---- | ------------------------------------- | ----------- |
 | 🎅    | Ippo | [NTP-996](https://github.com/NTP-996) | DevRel      |
+| 🫐    | niftesty | [niklasp](https://github.com/niklasp) | Fullstack Web3 Dev      |
 
 ## 💻 Local development environment setup
 
