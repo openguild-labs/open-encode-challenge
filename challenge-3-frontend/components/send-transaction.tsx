@@ -164,7 +164,6 @@ export default function TokenVesting() {
         functionName: "addToWhitelist",
         args: [
           values.beneficiary],
-        value: parseEther(values.amount),
         chainId: westendAssetHub.id,
       });
     } else {
