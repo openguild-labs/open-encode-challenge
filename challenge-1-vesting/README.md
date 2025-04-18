@@ -11,6 +11,8 @@ Add your information to the below list to officially participate in the workshop
 | Emoji | Name | Github Username                       | Occupations |
 | ----- | ---- | ------------------------------------- | ----------- |
 | 🎅    | Ippo | [NTP-996](https://github.com/NTP-996) | DevRel      |
+| 👻    | Jack | [JackInSightsV2](https://github.com/JackInSightsV2) | DevOps      |
+
 
 ## 💻 Local development environment setup
 
