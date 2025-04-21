@@ -41,7 +41,7 @@ export const westendAssetHub = defineChain({
   },
   contracts: {
     multicall3: {
-      address: '0x5545dec97cb957e83d3e6a1e82fabfacf9764cf1',
+      address: '0x8cf6dcbF49559ac5ad4e62334064E32BC438779F',
       blockCreated: 10174702,
     },
   },
