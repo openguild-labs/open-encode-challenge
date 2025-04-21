@@ -18,13 +18,13 @@ TLDR: If you are not familiar with Git & Github, follow these steps below to for
 - Step 3: `Clone` the forked repository to your local device using the below command
 
 ```sh
-git clone https://github.com/<your_github_username>/lost-tribes-challenges.git
+git clone https://github.com/<your_github_username>/open-encode-challenges.git
 ```
 
 Replace the `[name-of-your-account]` with your Github username. For example, if my username is `chungquantin`, I would do the below command to clone the repository to my local device.
 
 ```sh
-git clone https://github.com/openguild-labs/lost-tribes-challenges.git
+git clone https://github.com/openguild-labs/open-encode-challenges.git
 ```
 
 - Step 4: Edit the `README.md` file to register for official participation
@@ -39,7 +39,7 @@ Go to **Participant Registration** section and register to be the workshop parti
 
 ```
 git add .
-git commit -m "Register for OpenGuild Lost Tribes Challenges"
+git commit -m "<Your Name> | Register for OpenGuild x Encode Club Challenges"
 ```
 
 - Step 6: Create a `Pull Request` to merge your changes to this repository and name your PR as `Your name | Register for OpenGuild Sub0 Challenges`
