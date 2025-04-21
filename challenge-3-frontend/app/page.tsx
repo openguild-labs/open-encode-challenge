@@ -24,6 +24,9 @@ export default function Home() {
             <Link href="/write-contract">Write contract</Link>
           </li>
           <li className="mb-2">
+            <Link href="/token-vesting">Token Vesting</Link>
+          </li>
+          <li className="mb-2">
             <Link href="/mint-redeem-lst-bifrost">Mint/Redeem LST Bifrost</Link>
           </li>
         </ol>
@@ -102,7 +105,24 @@ export default function Home() {
           </a>
         </div>
         <div className="text-sm text-muted-foreground">
-          Maintained by <a className="underline underline-offset-4" href="https://buildstation.org" target="_blank" rel="noopener noreferrer">buildstation.org</a> with support from <a className="underline underline-offset-4" href="https://openguild.wtf" target="_blank" rel="noopener noreferrer">OpenGuild</a>
+          Maintained by{" "}
+          <a
+            className="underline underline-offset-4"
+            href="https://buildstation.org"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            buildstation.org
+          </a>{" "}
+          with support from{" "}
+          <a
+            className="underline underline-offset-4"
+            href="https://openguild.wtf"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            OpenGuild
+          </a>
         </div>
       </footer>
     </div>
