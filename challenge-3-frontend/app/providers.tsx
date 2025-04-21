@@ -20,7 +20,11 @@ import { defineChain } from 'viem';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { WagmiProvider, http, createConfig } from 'wagmi';
 import { Provider as JotaiProvider } from 'jotai';
-// import according to docs
+import {
+  LP_ADDRESS,
+  REWARD_ADDRESS,
+  YIELD_FARM_ADDRESS,
+} from "@/lib/config";
 
 export const westendAssetHub = defineChain({
   id: 420420421,
@@ -40,9 +44,14 @@ export const westendAssetHub = defineChain({
     default: { name: 'Explorer', url: 'https://assethub-westend.subscan.io' },
   },
   contracts: {
-    multicall3: {
-      address: '0x5545dec97cb957e83d3e6a1e82fabfacf9764cf1',
-      blockCreated: 10174702,
+    lpToken: {
+      address: LP_ADDRESS,
+    },
+    rewardToken: {
+      address: REWARD_ADDRESS,
+    },
+    yieldToken: {
+      address: YIELD_FARM_ADDRESS,
     },
   },
 })
@@ -67,7 +76,7 @@ const { wallets } = getDefaultWallets();
 // initialize and destructure wallets object
 
 const config = getDefaultConfig({
-  appName: "DOTUI", // Name your app
+  appName: "OpenGuild", // Name your app
   projectId: "ddf8cf3ee0013535c3760d4c79c9c8b9", // Enter your WalletConnect Project ID here
   wallets: [
     ...wallets,

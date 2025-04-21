@@ -75,7 +75,7 @@ describe("TokenVesting", function () {
       );
 
       const schedule = await vesting.vestingSchedules(beneficiary.address);
-      expect(schedule.totalAmount).to.equal(amount);
+      expect(schedule.amount).to.equal(amount);
     });
 
     it("Should fail for non-whitelisted beneficiary", async function () {
@@ -139,7 +139,7 @@ describe("TokenVesting", function () {
     it("Should allow owner to revoke vesting", async function () {
       await vesting.revokeVesting(beneficiary.address);
       const schedule = await vesting.vestingSchedules(beneficiary.address);
-      expect(schedule.revoked).to.be.true;
+      expect(schedule.revokeData).to.be.true;
     });
 
     it("Should not allow non-owner to revoke vesting", async function () {
