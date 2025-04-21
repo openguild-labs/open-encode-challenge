@@ -8,9 +8,9 @@ OpenGuild Labs makes the repository to introduce OpenHack workshop participants 
 
 Add your information to the below list to officially participate in the workshop challenge (This is the first mission of the whole workshop)
 
-| Emoji | Name | Github Username                       | Occupations |
-| ----- | ---- | ------------------------------------- | ----------- |
-| 🎅    | Ippo | [NTP-996](https://github.com/NTP-996) | DevRel      |
+| Emoji |    Name   |                 Github Username             |  Occupations |
+| ----- | --------- | ------------------------------------------- | ------------ |
+|   ❄️  |  Đức Minh | [DxcMint868](https://github.com/DxcMint868) |  Unemployed  |
 
 ## 💻 Local development environment setup
 

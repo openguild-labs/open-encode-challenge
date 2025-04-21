@@ -26,6 +26,9 @@ export default function Home() {
           <li className="mb-2">
             <Link href="/mint-redeem-lst-bifrost">Mint/Redeem LST Bifrost</Link>
           </li>
+          <li className="mb-2">
+            <Link href="/token-vesting">Token vesting portal</Link>
+          </li>
         </ol>
         <div className="flex gap-4 items-center flex-col sm:flex-row">
           <a
@@ -100,9 +103,41 @@ export default function Home() {
             />
             Go to openguild.wtf →
           </a>
+          <a
+            className="flex items-center gap-2 hover:underline hover:underline-offset-4"
+            href="https://openguild.wtf"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <Image
+              aria-hidden
+              src="https://nextjs.org/icons/globe.svg"
+              alt="Globe icon"
+              width={16}
+              height={16}
+            />
+            Go to openguild.wtf →
+          </a>
         </div>
         <div className="text-sm text-muted-foreground">
-          Maintained by <a className="underline underline-offset-4" href="https://buildstation.org" target="_blank" rel="noopener noreferrer">buildstation.org</a> with support from <a className="underline underline-offset-4" href="https://openguild.wtf" target="_blank" rel="noopener noreferrer">OpenGuild</a>
+          Maintained by{" "}
+          <a
+            className="underline underline-offset-4"
+            href="https://buildstation.org"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            buildstation.org
+          </a>{" "}
+          with support from{" "}
+          <a
+            className="underline underline-offset-4"
+            href="https://openguild.wtf"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            OpenGuild
+          </a>
         </div>
       </footer>
     </div>
