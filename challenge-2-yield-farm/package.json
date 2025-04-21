@@ -17,6 +17,8 @@
     "hardhat": "^2.22.17"
   },
   "dependencies": {
-    "@openzeppelin/contracts": "^5.1.0"
+    "@openzeppelin/contracts": "^5.1.0",
+    "@nomicfoundation/hardhat-ignition": "^0.15.8",
+    "dotenv": "^16.4.7"
   }
 }
