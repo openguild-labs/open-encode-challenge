@@ -39,7 +39,8 @@ describe("TokenVesting", function () {
 
   describe("Deployment", function () {
     it("Should set the right token", async function () {
-      expect(await vesting.token()).to.equal(await token.getAddress());
+      // expect(await vesting.token()).to.equal(await token.getAddress());
+      expect(await vesting.tokens(await token.getAddress())).to.be.true;
     });
 
     it("Should set the right owner", async function () {
@@ -60,6 +61,30 @@ describe("TokenVesting", function () {
     });
   });
 
+  describe("Whitelisted token", function () {
+    let token1: any;
+    beforeEach(async function () {
+      const MockERC20 = await ethers.getContractFactory("MockERC20");
+      token1 = await MockERC20.deploy("Mock Token 1", "MTK1");
+      await token1.waitForDeployment();
+    });
+
+    it("Should allow token to be whitelisted", async function () {
+      expect(await vesting.tokens(await token1.getAddress())).to.be.false;
+      await vesting.changeWhitelistedToken(await token1.getAddress(), true);
+      expect(await vesting.tokens(await token.getAddress())).to.be.true;
+    });
+
+    it("Should disable whitelisted token", async function () {
+      expect(await vesting.tokens(await token1.getAddress())).to.be.false;
+      await vesting.changeWhitelistedToken(await token1.getAddress(), true);
+      expect(await vesting.tokens(await token.getAddress())).to.be.true;
+
+      await vesting.changeWhitelistedToken(await token1.getAddress(), false);
+      expect(await vesting.tokens(await token1.getAddress())).to.be.false;
+    });
+  });
+
   describe("Creating vesting schedule", function () {
     beforeEach(async function () {
       await vesting.addToWhitelist(beneficiary.address);
@@ -71,7 +96,8 @@ describe("TokenVesting", function () {
         amount,
         cliffDuration,
         vestingDuration,
-        startTime
+        startTime,
+        await token.getAddress()
       );
 
       const schedule = await vesting.vestingSchedules(beneficiary.address);
@@ -85,7 +111,8 @@ describe("TokenVesting", function () {
           amount,
           cliffDuration,
           vestingDuration,
-          startTime
+          startTime,
+          await token.getAddress()
         )
       ).to.be.revertedWith("Beneficiary not whitelisted");
     });
@@ -99,7 +126,8 @@ describe("TokenVesting", function () {
         amount,
         cliffDuration,
         vestingDuration,
-        startTime
+        startTime,
+        await token.getAddress()
       );
     });
 
@@ -132,14 +160,16 @@ describe("TokenVesting", function () {
         amount,
         cliffDuration,
         vestingDuration,
-        startTime
+        startTime,
+        await token.getAddress()
       );
     });
 
     it("Should allow owner to revoke vesting", async function () {
       await vesting.revokeVesting(beneficiary.address);
       const schedule = await vesting.vestingSchedules(beneficiary.address);
-      expect(schedule.revoked).to.be.true;
+      // expect(schedule.revoked).to.be.true;
+      expect(schedule.revokedTime).to.be.above(0);
     });
 
     it("Should not allow non-owner to revoke vesting", async function () {
@@ -168,7 +198,8 @@ describe("TokenVesting", function () {
         amount,
         cliffDuration,
         vestingDuration,
-        startTime
+        startTime,
+        await token.getAddress()
       );
     });
 
