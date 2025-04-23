@@ -10,7 +10,7 @@ Add your information to the below list to officially participate in the workshop
 
 | Emoji | Name | Github Username                       | Occupations |
 | ----- | ---- | ------------------------------------- | ----------- |
-| ⚡   | Jade Laurence Empleo | [syntaxsurge](https://github.com/syntaxsurge) | Self-employed |
+| ⚡   | Jade Laurence Empleo | [syntaxsurge](https://github.com/syntaxsurge) | Freelancer |
 
 ## 💻 Local development environment setup
 
