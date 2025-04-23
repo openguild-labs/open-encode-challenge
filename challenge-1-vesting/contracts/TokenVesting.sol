@@ -165,7 +165,10 @@ contract TokenVesting is Ownable(msg.sender), Pausable, ReentrancyGuard {
         uint256 vestedSoFar = _computeTotalVested(schedule);
         uint256 unvested = schedule.totalAmount - vestedSoFar;
 
+        // Mark as revoked and update schedule so that only the vested portion
+        // remains claimable by the beneficiary.
         schedule.revoked = true;
+        schedule.totalAmount = vestedSoFar;
         schedule.vestingDuration = block.timestamp > schedule.startTime
             ? block.timestamp - schedule.startTime
             : 0;
