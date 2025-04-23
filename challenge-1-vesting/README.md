@@ -120,8 +120,8 @@ At the time writing this challenge, Hardhat haven't support deployment on Westen
 
 ### 🙋‍♂️ How to claim the bounty?
 
-- [ ] Complete the challenge on your fork repository <br/>
-- [ ] ⭐ Star Open Guild repository <br/>
-- [ ] 👥 Follow OpenGuild Lab Github <br/>
-- [ ] 💬 Join OpenGuild Discord <br/>
-- [ ] 📝 Submit the proof-of-work (your challenge repository) to OpenGuild Discord <br/>
+- [x] Complete the challenge on your fork repository <br/>
+- [x] ⭐ Star Open Guild repository <br/>
+- [x] 👥 Follow OpenGuild Lab Github <br/>
+- [x] 💬 Join OpenGuild Discord <br/>
+- [x] 📝 Submit the proof-of-work (your challenge repository) to OpenGuild Discord <br/>
