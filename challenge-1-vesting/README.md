@@ -10,7 +10,7 @@ Add your information to the below list to officially participate in the workshop
 
 | Emoji | Name | Github Username                       | Occupations |
 | ----- | ---- | ------------------------------------- | ----------- |
-| 🎅    | Ippo | [NTP-996](https://github.com/NTP-996) | DevRel      |
+| ⚡   | Jade Laurence Empleo | [syntaxsurge](https://github.com/syntaxsurge) | Freelancer |
 
 ## 💻 Local development environment setup
 
@@ -120,8 +120,8 @@ At the time writing this challenge, Hardhat haven't support deployment on Westen
 
 ### 🙋‍♂️ How to claim the bounty?
 
-- [ ] Complete the challenge on your fork repository <br/>
-- [ ] ⭐ Star Open Guild repository <br/>
-- [ ] 👥 Follow OpenGuild Lab Github <br/>
-- [ ] 💬 Join OpenGuild Discord <br/>
-- [ ] 📝 Submit the proof-of-work (your challenge repository) to OpenGuild Discord <br/>
+- [x] Complete the challenge on your fork repository <br/>
+- [x] ⭐ Star Open Guild repository <br/>
+- [x] 👥 Follow OpenGuild Lab Github <br/>
+- [x] 💬 Join OpenGuild Discord <br/>
+- [x] 📝 Submit the proof-of-work (your challenge repository) to OpenGuild Discord <br/>
