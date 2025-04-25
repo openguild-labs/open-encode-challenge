@@ -2,6 +2,7 @@ import { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
 import "@nomicfoundation/hardhat-ignition";
 import "dotenv/config";
+import "hardhat-contract-sizer";
 
 const config: HardhatUserConfig = {
   solidity: {
@@ -11,8 +12,8 @@ const config: HardhatUserConfig = {
         enabled: true,
         runs: 1, // Lower optimization runs for simpler bytecode
       },
-      evmVersion: "london", // Use an older EVM version for better compatibility
-      viaIR: false, // Disable IR-based compilation
+      evmVersion: "london", // Try istanbul for better compatibility
+      viaIR: true,
     },
   },
   networks: {
@@ -23,6 +24,12 @@ const config: HardhatUserConfig = {
       gasPrice: "auto",
       timeout: 100000,
     },
+  },
+  contractSizer: {
+    alphaSort: true,
+    disambiguatePaths: false,
+    runOnCompile: true,
+    unit: "B",
   },
 };
 
