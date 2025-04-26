@@ -11,21 +11,27 @@ export default function Navbar() {
       </Link>
       <Link
         className="text-sm underline underline-offset-4"
-        href="/send-transaction"
+        href="/vesting"
       >
-        Send transaction
+        Vesting
       </Link>
       <Link
         className="text-sm underline underline-offset-4"
-        href="/write-contract"
+        href="/yield-farm"
       >
-        Write contract
+        Yield Farm
       </Link>
       <Link
         className="text-sm underline underline-offset-4"
-        href="/mint-redeem-lst-bifrost"
+        href="/transferWND"
       >
-        Mint/Redeem LST Bifrost
+        Transfer WND
+      </Link>
+      <Link
+        className="text-sm underline underline-offset-4"
+        href="/tokenMint"
+      >
+        Mint / Transfer ERC20 Token
       </Link>
     </div>
   );

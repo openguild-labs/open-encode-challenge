@@ -113,7 +113,7 @@ export default function WriteContract() {
     config: address ? localConfig : config,
   })
 
-  const USDC_CONTRACT_ADDRESS = "0xc8576Fb6De558b313afe0302B3fedc6F6447BbEE";
+  const USDC_CONTRACT_ADDRESS = "0x237c8A622079a27E99Bc5c6e80f8447a39C3f0dA";
 
   // useReadContracts hook to read contract
   const { 
@@ -136,6 +136,8 @@ export default function WriteContract() {
   // get the max balance and decimals from the data
   const maxBalance = data?.[0]?.result as bigint | undefined;
   const decimals = data?.[1]?.result as number | undefined;
+
+  console.log(maxBalance, decimals);
 
   // form schema for sending transaction
   const formSchema = z.object({

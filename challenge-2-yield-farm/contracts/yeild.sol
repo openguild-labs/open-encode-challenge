@@ -1,185 +1,136 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+interface IERC20 {
+    function transfer(address to, uint256 value) external returns (bool);
+    function transferFrom(address from, address to, uint256 value) external returns (bool);
+}
 
-/**
- * @title YieldFarm
- * @notice Challenge: Implement a yield farming contract with the following requirements:
- *
- * 1. Users can stake LP tokens and earn reward tokens
- * 2. Rewards are distributed based on time and amount staked
- * 3. Implement reward boosting mechanism for long-term stakers
- * 4. Add emergency withdrawal functionality
- * 5. Implement reward rate adjustment mechanism
- */
-
-contract YieldFarm is ReentrancyGuard, Ownable {
-    // LP token that users can stake
+contract YieldFarm {
     IERC20 public lpToken;
-
-    // Token given as reward
     IERC20 public rewardToken;
-
-    // Reward rate per second
     uint256 public rewardRate;
+    uint64 public l; // lastUpdate
+    uint256 public rPTS; // rewardPerTokenStored
+    uint128 public totalStaked;
+    address public owner;
 
-    // Last update time
-    uint256 public lastUpdateTime;
-
-    // Reward per token stored
-    uint256 public rewardPerTokenStored;
-
-    // Total staked amount
-    uint256 public totalStaked;
-
-    // User struct to track staking info
     struct UserInfo {
-        uint256 amount; // Amount of LP tokens staked
-        uint256 startTime; // Time when user started staking
+        uint128 amount; // LP tokens staked
+        uint64 startTime; // Staking start time
         uint256 rewardDebt; // Reward debt
         uint256 pendingRewards; // Unclaimed rewards
     }
 
-    // Mapping of user address to their info
     mapping(address => UserInfo) public userInfo;
 
-    // Boost multiplier thresholds (in seconds)
-    uint256 public constant BOOST_THRESHOLD_1 = 7 days;
-    uint256 public constant BOOST_THRESHOLD_2 = 30 days;
-    uint256 public constant BOOST_THRESHOLD_3 = 90 days;
+    uint32 public constant BOOST_1 = 7 days;
+    uint32 public constant BOOST_2 = 30 days;
+    uint32 public constant BOOST_3 = 90 days;
 
-    // Events
     event Staked(address indexed user, uint256 amount);
     event Withdrawn(address indexed user, uint256 amount);
     event RewardsClaimed(address indexed user, uint256 amount);
     event EmergencyWithdrawn(address indexed user, uint256 amount);
 
-    // TODO: Implement the following functions
+    error OwnableUnauthorizedAccount(address account);
 
-    /**
-     * @notice Initialize the contract with the LP token and reward token addresses
-     * @param _lpToken Address of the LP token
-     * @param _rewardToken Address of the reward token
-     * @param _rewardRate Initial reward rate per second
-     */
-    constructor(
-        address _lpToken,
-        address _rewardToken,
-        uint256 _rewardRate
-    ) Ownable(msg.sender) {
-        // TODO: Initialize contract state
+    modifier onlyOwner() {
+        if (owner != msg.sender) revert OwnableUnauthorizedAccount(msg.sender);
+        _;
     }
 
-    function updateReward(address _user) internal {
-        rewardPerTokenStored = rewardPerToken();
-        lastUpdateTime = block.timestamp;
-
-        if (_user != address(0)) {
-            UserInfo storage user = userInfo[_user];
-            user.pendingRewards = earned(_user);
-            user.rewardDebt = (user.amount * rewardPerTokenStored) / 1e18;
-        }
+    constructor(address _lp, address _reward, uint256 _rate) {
+        owner = msg.sender;
+        lpToken = IERC20(_lp);
+        rewardToken = IERC20(_reward);
+        rewardRate = _rate;
+        l = uint64(block.timestamp);
     }
 
     function rewardPerToken() public view returns (uint256) {
-        // TODO: Implement pending rewards calculation
-        // Requirements:
-        // 1. Calculate rewards since last update
-        // 2. Apply boost multiplier
-        // 3. Return total pending rewards
+        if (totalStaked == 0) return rPTS;
+        unchecked {
+            return rPTS + ((block.timestamp - l) * rewardRate) / totalStaked;
+        }
     }
 
-    function earned(address _user) public view returns (uint256) {
-        // TODO: Implement pending rewards calculation
-        // Requirements:
-        // 1. Calculate rewards since last update
-        // 2. Apply boost multiplier
-        // 3. Return total pending rewards
+    function calculateBoostMultiplier(address _user) public view returns (uint256) {
+        UserInfo memory u = userInfo[_user];
+        if (u.amount == 0 || u.startTime == 0) return 100;
+        uint64 duration = uint64(block.timestamp) - u.startTime;
+        if (duration >= BOOST_3) return 200;
+        if (duration >= BOOST_2) return 150;
+        if (duration >= BOOST_1) return 125;
+        return 100;
     }
 
-    /**
-     * @notice Stake LP tokens into the farm
-     * @param _amount Amount of LP tokens to stake
-     */
-    function stake(uint256 _amount) external nonReentrant {
-        // TODO: Implement staking logic
-        // Requirements:
-        // 1. Update rewards
-        // 2. Transfer LP tokens from user
-        // 3. Update user info and total staked amount
-        // 4. Emit Staked event
+    function _up(address _user) private {
+        UserInfo storage u = userInfo[_user];
+        uint256 rpt = rewardPerToken();
+        u.pendingRewards = pendingRewards(_user);
+        u.rewardDebt = (u.amount * rpt);
     }
 
-    /**
-     * @notice Withdraw staked LP tokens
-     * @param _amount Amount of LP tokens to withdraw
-     */
-    function withdraw(uint256 _amount) external nonReentrant {
-        // TODO: Implement withdrawal logic
-        // Requirements:
-        // 1. Update rewards
-        // 2. Transfer LP tokens to user
-        // 3. Update user info and total staked amount
-        // 4. Emit Withdrawn event
+    function stake(uint256 _amt) external {
+        require(_amt > 0, "Cannot stake 0");
+        _up(msg.sender);
+        UserInfo storage u = userInfo[msg.sender];
+        if (u.amount == 0) u.startTime = uint64(block.timestamp);
+        u.amount += uint128(_amt);
+        totalStaked += uint128(_amt);
+        lpToken.transferFrom(msg.sender, address(this), _amt);
+        emit Staked(msg.sender, _amt);
     }
 
-    /**
-     * @notice Claim pending rewards
-     */
-    function claimRewards() external nonReentrant {
-        // TODO: Implement reward claiming logic
-        // Requirements:
-        // 1. Calculate pending rewards with boost multiplier
-        // 2. Transfer rewards to user
-        // 3. Update user reward debt
-        // 4. Emit RewardsClaimed event
+    function withdraw(uint256 _amt) external {
+        UserInfo storage u = userInfo[msg.sender];
+        require(u.amount >= _amt, "Insufficient balance");
+        _up(msg.sender);
+        u.amount -= uint128(_amt);
+        totalStaked -= uint128(_amt);
+        lpToken.transfer(msg.sender, _amt);
+        emit Withdrawn(msg.sender, _amt);
     }
 
-    /**
-     * @notice Emergency withdraw without caring about rewards
-     */
-    function emergencyWithdraw() external nonReentrant {
-        // TODO: Implement emergency withdrawal
-        // Requirements:
-        // 1. Transfer all LP tokens back to user
-        // 2. Reset user info
-        // 3. Emit EmergencyWithdrawn event
+    function claimRewards() external {
+        _up(msg.sender);
+        UserInfo storage u = userInfo[msg.sender];
+        uint256 rewards = u.pendingRewards;
+        if (rewards > 0) {
+            u.pendingRewards = 0;
+            rewardToken.transfer(msg.sender, rewards);
+            emit RewardsClaimed(msg.sender, rewards);
+        }
     }
 
-    /**
-     * @notice Calculate boost multiplier based on staking duration
-     * @param _user Address of the user
-     * @return Boost multiplier (100 = 1x, 150 = 1.5x, etc.)
-     */
-    function calculateBoostMultiplier(
-        address _user
-    ) public view returns (uint256) {
-        // TODO: Implement boost multiplier calculation
-        // Requirements:
-        // 1. Calculate staking duration
-        // 2. Return appropriate multiplier based on duration thresholds
+    function emergencyWithdraw() external {
+        UserInfo storage u = userInfo[msg.sender];
+        uint256 amt = u.amount;
+        if (amt > 0) {
+            totalStaked -= uint128(amt);
+            u.amount = 0;
+            u.pendingRewards = 0;
+            u.rewardDebt = 0;
+            u.startTime = 0;
+            lpToken.transfer(msg.sender, amt);
+            emit EmergencyWithdrawn(msg.sender, amt);
+        }
     }
 
-    /**
-     * @notice Update reward rate
-     * @param _newRate New reward rate per second
-     */
-    function updateRewardRate(uint256 _newRate) external onlyOwner {
-        // TODO: Implement reward rate update logic
-        // Requirements:
-        // 1. Update rewards before changing rate
-        // 2. Set new reward rate
+    function updateRewardRate(uint256 _rate) external onlyOwner {
+        rPTS = rewardPerToken();
+        l = uint64(block.timestamp);
+        rewardRate = _rate;
     }
 
-    /**
-     * @notice View function to see pending rewards for a user
-     * @param _user Address of the user
-     * @return Pending reward amount
-     */
-    function pendingRewards(address _user) external view returns (uint256) {
-        return earned(_user);
+    function pendingRewards(address _user) public view returns (uint256) {
+        UserInfo memory u = userInfo[_user];
+        if (u.amount == 0) return u.pendingRewards;
+        uint256 rpt = rewardPerToken();
+        uint256 r = (u.amount * (rpt - u.rewardDebt));
+        unchecked {
+            return u.pendingRewards + (r * calculateBoostMultiplier(_user)) / 100;
+        }
     }
 }

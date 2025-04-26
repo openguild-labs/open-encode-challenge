@@ -66,7 +66,7 @@ export const localConfig = createConfig({
 const { wallets } = getDefaultWallets();
 // initialize and destructure wallets object
 
-const config = getDefaultConfig({
+export const config = getDefaultConfig({
   appName: "DOTUI", // Name your app
   projectId: "ddf8cf3ee0013535c3760d4c79c9c8b9", // Enter your WalletConnect Project ID here
   wallets: [
