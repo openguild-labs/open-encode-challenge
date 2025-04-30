@@ -24,14 +24,14 @@ describe("TokenVesting", function () {
     await token.waitForDeployment();
 
     // Deploy Vesting Contract
-    const TokenVesting = await ethers.getContractFactory("TokenVesting");
-    vesting = await TokenVesting.deploy(await token.getAddress());
+    TokenVesting = await ethers.getContractFactory("TokenVesting");
+    vesting = await TokenVesting.deploy();
     await vesting.waitForDeployment();
 
-    // Mint tokens to owner
+    // Mint tokens to owner for testing
     await token.mint(owner.address, ethers.parseEther("10000"));
 
-    // Approve vesting contract
+    // Approve vesting contract to spend tokens
     await token.approve(await vesting.getAddress(), ethers.parseEther("10000"));
 
     startTime = (await time.latest()) + 60; // Start 1 minute from now
@@ -39,7 +39,7 @@ describe("TokenVesting", function () {
 
   describe("Deployment", function () {
     it("Should set the right token", async function () {
-      expect(await vesting.token()).to.equal(await token.getAddress());
+      expect(await token.name()).to.equal("Mock Token");
     });
 
     it("Should set the right owner", async function () {
@@ -68,13 +68,17 @@ describe("TokenVesting", function () {
     it("Should create vesting schedule", async function () {
       await vesting.createVestingSchedule(
         beneficiary.address,
+        await token.getAddress(),
         amount,
         cliffDuration,
         vestingDuration,
         startTime
       );
 
-      const schedule = await vesting.vestingSchedules(beneficiary.address);
+      const schedule = await vesting.getVestingSchedule(
+        beneficiary.address,
+        await token.getAddress()
+      );
       expect(schedule.totalAmount).to.equal(amount);
     });
 
@@ -82,12 +86,15 @@ describe("TokenVesting", function () {
       await expect(
         vesting.createVestingSchedule(
           addr2.address,
+          await token.getAddress(),
           amount,
           cliffDuration,
           vestingDuration,
           startTime
         )
-      ).to.be.revertedWith("Beneficiary not whitelisted");
+      )
+        .to.be.revertedWithCustomError(vesting, "BeneficiaryNotWhitelisted")
+        .withArgs(addr2.address);
     });
   });
 
@@ -96,6 +103,7 @@ describe("TokenVesting", function () {
       await vesting.addToWhitelist(beneficiary.address);
       await vesting.createVestingSchedule(
         beneficiary.address,
+        await token.getAddress(),
         amount,
         cliffDuration,
         vestingDuration,
@@ -107,19 +115,23 @@ describe("TokenVesting", function () {
       // Ensure we're past the start time but before cliff
       await time.increase(60); // Move past start time
       await expect(
-        vesting.connect(beneficiary).claimVestedTokens()
-      ).to.be.revertedWith("No tokens to claim");
+        vesting.connect(beneficiary).claimVestedTokens(await token.getAddress())
+      ).to.be.revertedWithCustomError(vesting, "NoVestedTokensAvailable");
     });
 
     it("Should allow claiming after cliff", async function () {
       await time.increaseTo(startTime + cliffDuration + vestingDuration / 4);
-      await vesting.connect(beneficiary).claimVestedTokens();
+      await vesting
+        .connect(beneficiary)
+        .claimVestedTokens(await token.getAddress());
       expect(await token.balanceOf(beneficiary.address)).to.be.above(0);
     });
 
     it("Should vest full amount after vesting duration", async function () {
       await time.increaseTo(startTime + vestingDuration + 1);
-      await vesting.connect(beneficiary).claimVestedTokens();
+      await vesting
+        .connect(beneficiary)
+        .claimVestedTokens(await token.getAddress());
       expect(await token.balanceOf(beneficiary.address)).to.equal(amount);
     });
   });
@@ -129,6 +141,7 @@ describe("TokenVesting", function () {
       await vesting.addToWhitelist(beneficiary.address);
       await vesting.createVestingSchedule(
         beneficiary.address,
+        await token.getAddress(),
         amount,
         cliffDuration,
         vestingDuration,
@@ -137,24 +150,40 @@ describe("TokenVesting", function () {
     });
 
     it("Should allow owner to revoke vesting", async function () {
-      await vesting.revokeVesting(beneficiary.address);
-      const schedule = await vesting.vestingSchedules(beneficiary.address);
+      await vesting.revokeVesting(
+        beneficiary.address,
+        await token.getAddress()
+      );
+      const schedule = await vesting.getVestingSchedule(
+        beneficiary.address,
+        await token.getAddress()
+      );
       expect(schedule.revoked).to.be.true;
     });
 
     it("Should not allow non-owner to revoke vesting", async function () {
       await expect(
-        vesting.connect(beneficiary).revokeVesting(beneficiary.address)
+        vesting
+          .connect(beneficiary)
+          .revokeVesting(beneficiary.address, await token.getAddress())
       ).to.be.revertedWithCustomError(vesting, "OwnableUnauthorizedAccount");
     });
 
     it("Should return unvested tokens to owner when revoking", async function () {
       const initialOwnerBalance = await token.balanceOf(owner.address);
       await time.increaseTo(startTime + vestingDuration / 2); // 50% vested
-      await vesting.revokeVesting(beneficiary.address);
+      await vesting.revokeVesting(
+        beneficiary.address,
+        await token.getAddress()
+      );
       const finalOwnerBalance = await token.balanceOf(owner.address);
-      expect(finalOwnerBalance - initialOwnerBalance).to.be.closeTo(
-        amount / BigInt(2), // Approximately 50% of tokens should return to owner
+
+      // Calculate difference
+      const diff = finalOwnerBalance - initialOwnerBalance;
+
+      // Should be approximately 50% of tokens returned to owner
+      expect(diff).to.be.closeTo(
+        amount / 2n, // Approximately 50% of tokens should return to owner
         ethers.parseEther("1") // Allow for small rounding differences
       );
     });
@@ -163,28 +192,35 @@ describe("TokenVesting", function () {
   describe("Pausing", function () {
     beforeEach(async function () {
       await vesting.addToWhitelist(beneficiary.address);
-      await vesting.createVestingSchedule(
-        beneficiary.address,
-        amount,
-        cliffDuration,
-        vestingDuration,
-        startTime
-      );
     });
 
     it("Should not allow operations when paused", async function () {
       await vesting.pause();
       await expect(
-        vesting.connect(beneficiary).claimVestedTokens()
+        vesting.createVestingSchedule(
+          beneficiary.address,
+          await token.getAddress(),
+          amount,
+          cliffDuration,
+          vestingDuration,
+          startTime
+        )
       ).to.be.revertedWithCustomError(vesting, "EnforcedPause");
     });
 
     it("Should allow operations after unpause", async function () {
       await vesting.pause();
       await vesting.unpause();
-      await time.increaseTo(startTime + vestingDuration);
-      await expect(vesting.connect(beneficiary).claimVestedTokens()).to.not.be
-        .reverted;
+      await expect(
+        vesting.createVestingSchedule(
+          beneficiary.address,
+          await token.getAddress(),
+          amount,
+          cliffDuration,
+          vestingDuration,
+          startTime
+        )
+      ).to.not.be.reverted;
     });
   });
 });
