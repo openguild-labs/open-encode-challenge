@@ -173,7 +173,7 @@ contract TokenVesting is Ownable(msg.sender), Pausable, ReentrancyGuard {
             require(token.transfer(owner(), unvestedAmount), "token transfer failed");
         }
         
-        emit VestingRevoked(beneficiary);                                // emit event for revoked vesting
+        emit VestingRevoked(beneficiary);                              // emit event for revoked vesting
     }
 
     // function to pause the contract

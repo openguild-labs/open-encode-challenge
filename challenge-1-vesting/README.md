@@ -10,7 +10,7 @@ Add your information to the below list to officially participate in the workshop
 
 | Emoji | Name | Github Username                       | Occupations |
 | ----- | ---- | ------------------------------------- | ----------- |
-|  🦄   | Abhishek | [AbhiXverse](https://github.com/AbhiXverse) | Developer |
+|  🦄  | Abhishek | [AbhiXverse](https://github.com/AbhiXverse) | Developer |
 
 ## 💻 Local development environment setup
 

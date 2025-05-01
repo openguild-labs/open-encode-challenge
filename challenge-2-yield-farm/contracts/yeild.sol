@@ -185,7 +185,7 @@ contract YieldFarm is ReentrancyGuard, Ownable {
         // transfer rewards to user
         require(rewardToken.transfer(msg.sender, rewardsToSend), "reward transfer failed");
         
-        emit RewardsClaimed(msg.sender, rewardsToSend);          // emit event for claiming rewards
+        emit RewardsClaimed(msg.sender, rewardsToSend);         // emit event for claiming rewards
     }
 
     /**
