@@ -2,7 +2,6 @@ import { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
 import "@nomicfoundation/hardhat-ignition";
 import "dotenv/config";
-import "hardhat-contract-sizer";
 
 const config: HardhatUserConfig = {
   solidity: {
@@ -12,8 +11,8 @@ const config: HardhatUserConfig = {
         enabled: true,
         runs: 1, // Lower optimization runs for simpler bytecode
       },
-      evmVersion: "london", // Try istanbul for better compatibility
-      viaIR: true,
+      evmVersion: "london", // Use an older EVM version for better compatibility
+      viaIR: false, // Disable IR-based compilation
     },
   },
   networks: {
@@ -21,16 +20,9 @@ const config: HardhatUserConfig = {
       url: "https://westend-asset-hub-eth-rpc.polkadot.io",
       chainId: 420420421,
       accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
-      gasPrice: "auto", // Dynamic pricing to avoid gas issues
-      gas: 15000000, // High gas limit for deployment
+      gasPrice: "auto",
       timeout: 100000,
     },
-  },
-  contractSizer: {
-    alphaSort: true,
-    disambiguatePaths: false,
-    runOnCompile: true,
-    unit: "B",
   },
 };
 

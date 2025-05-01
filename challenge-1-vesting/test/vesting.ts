@@ -87,7 +87,7 @@ describe("TokenVesting", function () {
           vestingDuration,
           startTime
         )
-      ).to.be.revertedWith("Beneficiary not whitelisted");
+      ).to.be.revertedWith("beneficiary not whitelisted");
     });
   });
 
@@ -108,7 +108,7 @@ describe("TokenVesting", function () {
       await time.increase(60); // Move past start time
       await expect(
         vesting.connect(beneficiary).claimVestedTokens()
-      ).to.be.revertedWith("No tokens to claim");
+      ).to.be.revertedWith("no tokens available to claim");
     });
 
     it("Should allow claiming after cliff", async function () {
