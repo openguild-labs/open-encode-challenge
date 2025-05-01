@@ -1,14 +1,12 @@
 import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
 
 const VestingModule = buildModule("VestingModule", (m) => {
-  // Deploy Token first
-  const token = m.contract("SimpleToken", [], {
-    id: "simple_token",
+  const token = m.contract("MockERC20", ["Test Token", "TST"], {
+    id: "mock_token",
   });
 
-  // Deploy Vesting Contract with Token address
-  const vesting = m.contract("SimpleVesting", [token], {
-    id: "simple_vesting",
+  const vesting = m.contract("TokenVesting", [], {
+    id: "token_vesting",
   });
 
   return { token, vesting };
