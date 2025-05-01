@@ -10,7 +10,6 @@ Add your information to the below list to officially participate in the workshop
 
 | Emoji | Name  | Github Username                               | Occupations  |
 | ----- | ----- | --------------------------------------------- | ------------ |
-| 🎅    | Ippo  | [NTP-996](https://github.com/NTP-996)         | DevRel       |
 | 🎅    | Jerry | [jerrymusaga](https://github.com/jerrymusaga) | Software dev |
 
 ## 💻 Local development environment setup
