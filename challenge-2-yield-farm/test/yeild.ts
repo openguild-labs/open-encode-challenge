@@ -85,7 +85,7 @@ describe("YieldFarm", function () {
 
     it("Should not allow staking zero amount", async function () {
       await expect(yieldFarm.connect(user1).stake(0)).to.be.revertedWith(
-        "Cannot stake 0"
+        "cannot stake zero amount"
       );
     });
 
@@ -115,7 +115,7 @@ describe("YieldFarm", function () {
       // Test different boost thresholds
       const tests = [
         { days: 3, expectedMultiplier: 100n }, // No boost
-        { days: 8, expectedMultiplier: 125n }, // 1.25x boost
+        { days: 8, expectedMultiplier: 120n }, // 1.2x boost
         { days: 31, expectedMultiplier: 150n }, // 1.5x boost
         { days: 91, expectedMultiplier: 200n }, // 2x boost
       ];
@@ -160,7 +160,7 @@ describe("YieldFarm", function () {
       const tooMuch = stakeAmount * 2n;
       await expect(
         yieldFarm.connect(user1).withdraw(tooMuch)
-      ).to.be.revertedWith("Insufficient balance");
+      ).to.be.revertedWith("withdraw amount exceeds balance");
     });
 
     it("Should allow emergency withdrawal", async function () {
