@@ -32,7 +32,7 @@ git clone https://github.com/openguild-labs/open-encode-challenges.git
 Go to **Participant Registration** section and register to be the workshop participants. Add the below to the list, replace any placeholder with your personal information.
 
 ```
-| 🦄 | Name | Github username | Your current occupation |
+| 🦄 | MARIA NAKIBUUKA | marianakibuuka | student web3 |
 ```
 
 - Step 5: `Commit` your code and push to the forked Github repository
