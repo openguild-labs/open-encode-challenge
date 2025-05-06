@@ -10,8 +10,11 @@
   "license": "ISC",
   "description": "",
   "devDependencies": {
+    "@nomicfoundation/hardhat-chai-matchers": "^2.0.8",
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
-    "hardhat": "^2.22.17"
+    "@types/chai": "^5.2.1",
+    "chai": "^5.2.0",
+    "hardhat": "^2.22.19"
   },
   "dependencies": {
     "@nomicfoundation/hardhat-ignition": "^0.15.8",
