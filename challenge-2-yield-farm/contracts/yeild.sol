@@ -68,7 +68,7 @@ contract YieldFarm is ReentrancyGuard, Ownable {
     constructor(
         address _lpToken,
         address _rewardToken,
-        uint256 _rewardRate
+        uint256 _rewardRategit
     ) Ownable(msg.sender) {
         // TODO: Initialize contract state
     }

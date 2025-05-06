@@ -32,26 +32,26 @@ contract TokenVesting is Ownable(msg.sender), Pausable, ReentrancyGuard {
     struct VestingSchedule {
     // TODO: Define the vesting schedule struct
 
-       uint256 totalAmount;        // Total amount of tokens to be vested
-        uint256 startTime;          // Start time of the vesting period
-        uint256 cliffDuration;      // Duration of the cliff period in seconds
-        uint256 vestingDuration;    // Duration of the vesting period in seconds
-        uint256 amountClaimed;      // Amount of tokens already claimed
-        bool revoked;               // Whether the vesting has been revoked
+       uint256 totalAmount;        
+        uint256 startTime;          
+        uint256 cliffDuration;      
+        uint256 vestingDuration;    
+        uint256 amountClaimed;      
+        bool revoked;               
     }
 
-    // Token being vested
+   
     // TODO: Add state variables
 
         IERC20 public token;
 
 
-    // Mapping from beneficiary to vesting schedule
+    
     // TODO: Add state variables
 
     mapping(address => VestingSchedule) public vestingSchedules;
 
-    // Whitelist of beneficiaries
+  
     // TODO: Add state variables
 
       mapping(address => bool) public whitelist;
@@ -71,7 +71,7 @@ contract TokenVesting is Ownable(msg.sender), Pausable, ReentrancyGuard {
 
     }
 
-    // Modifier to check if beneficiary is whitelisted
+    
     modifier onlyWhitelisted(address beneficiary) {
         require(whitelist[beneficiary], "Beneficiary not whitelisted");
         _;
