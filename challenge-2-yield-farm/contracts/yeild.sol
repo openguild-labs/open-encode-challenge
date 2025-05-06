@@ -70,7 +70,16 @@ contract YieldFarm is ReentrancyGuard, Ownable {
         address _rewardToken,
         uint256 _rewardRate
     ) Ownable(msg.sender) {
-        // TODO: Initialize contract state
+        require( _lpToken != address(0), "Invalid LP token address");
+        require( _rewardToken != address(0), "Invalid reward token address");
+        require( _rewardRate > 0, "Invalid reward rate");
+
+        lpToken = IERC20(_lpToken);
+        rewardToken = IERC20(_rewardToken);
+        rewardRate = _rewardRate;
+        lastUpdateTime = block.timestamp;
+        rewardPerTokenStored = 0;
+       
     }
 
     function updateReward(address _user) internal {
@@ -90,6 +99,15 @@ contract YieldFarm is ReentrancyGuard, Ownable {
         // 1. Calculate rewards since last update
         // 2. Apply boost multiplier
         // 3. Return total pending rewards
+
+        if(totalStaked == 0){
+            return rewardPerTokenStored;
+        }
+        uint256 timeElapsed = block.timestamp - lastUpdateTime;
+        uint256 rewardSinceTimeElasped = (timeElapsed * rewardRate * 1e18) / totalStaked;
+        uint256 totalReward = rewardPerTokenStored + rewardSinceTimeElasped;
+        return totalReward;
+
     }
 
     function earned(address _user) public view returns (uint256) {
@@ -98,6 +116,15 @@ contract YieldFarm is ReentrancyGuard, Ownable {
         // 1. Calculate rewards since last update
         // 2. Apply boost multiplier
         // 3. Return total pending rewards
+        UserInfo storage user = userInfo[_user];
+        uint256 userRewardPerToken = rewardPerToken();
+        if(userRewardPerToken <= user.rewardDebt){
+            return user.pendingRewards;
+        }
+        uint256 rewards = ((user.amount * (userRewardPerToken - user.rewardDebt)) / 1e18);
+        uint256 boostMultiplier = calculateBoostMultiplier(_user);
+        uint256 boostedRewards = (rewards * boostMultiplier) / 100 ;
+        return user.pendingRewards + boostedRewards;
     }
 
     /**
@@ -111,6 +138,19 @@ contract YieldFarm is ReentrancyGuard, Ownable {
         // 2. Transfer LP tokens from user
         // 3. Update user info and total staked amount
         // 4. Emit Staked event
+        require(_amount > 0, "Cannot stake 0");
+        updateReward(msg.sender);
+        UserInfo storage user = userInfo[msg.sender];
+        if(user.amount == 0){
+            user.startTime = block.timestamp;
+        }
+        totalStaked += _amount;
+        user.amount += _amount;
+
+        require(
+            lpToken.transferFrom(msg.sender, address(this), _amount), "Transfer failed"
+        );
+        emit Staked(msg.sender, _amount);
     }
 
     /**
@@ -124,6 +164,16 @@ contract YieldFarm is ReentrancyGuard, Ownable {
         // 2. Transfer LP tokens to user
         // 3. Update user info and total staked amount
         // 4. Emit Withdrawn event
+        require(_amount > 0, "Cannot not withdraw 0");
+        UserInfo storage user  = userInfo[msg.sender];
+        require(user.amount >= _amount, "Insufficient balance");
+        updateReward(msg.sender);
+
+        totalStaked -= _amount;
+        user.amount -= _amount;
+
+        require(lpToken.transfer(msg.sender, _amount), "Transfer failed");
+        emit Withdrawn(msg.sender, _amount); 
     }
 
     /**
@@ -136,6 +186,18 @@ contract YieldFarm is ReentrancyGuard, Ownable {
         // 2. Transfer rewards to user
         // 3. Update user reward debt
         // 4. Emit RewardsClaimed event
+        updateReward(msg.sender);
+        UserInfo storage user = userInfo[msg.sender];
+
+        uint256 reward= earned(msg.sender);
+        if(reward > 0){
+            user.pendingRewards = 0;
+            user.rewardDebt = (user.amount * rewardPerTokenStored) / 1e18;
+            require(rewardToken.transfer(msg.sender, reward), "Transfer failed");
+            emit RewardsClaimed(msg.sender, reward);
+        } else {
+            revert("No rewards to claim");
+        }
     }
 
     /**
@@ -147,6 +209,16 @@ contract YieldFarm is ReentrancyGuard, Ownable {
         // 1. Transfer all LP tokens back to user
         // 2. Reset user info
         // 3. Emit EmergencyWithdrawn event
+        UserInfo storage user = userInfo[msg.sender];
+        uint256 amount = user.amount;
+        require(amount > 0, "No LP tokens to withdraw");
+
+        user.amount = 0;
+        user.rewardDebt = 0;
+        user.pendingRewards = 0;
+        totalStaked -= amount;
+        require(lpToken.transfer(msg.sender, amount), "Transfer failed");
+        emit EmergencyWithdrawn(msg.sender, amount);
     }
 
     /**
@@ -161,6 +233,23 @@ contract YieldFarm is ReentrancyGuard, Ownable {
         // Requirements:
         // 1. Calculate staking duration
         // 2. Return appropriate multiplier based on duration thresholds
+        UserInfo storage user = userInfo[_user];
+        if(user.amount == 0) return 100;
+
+        uint256 stakingDuration = block.timestamp - user.startTime;
+
+        if(stakingDuration >= BOOST_THRESHOLD_3){
+            return 200;
+        }else if(stakingDuration >= BOOST_THRESHOLD_2){
+            return 150;
+        }
+        else if(stakingDuration >= BOOST_THRESHOLD_1){
+            return 125;
+        }else {
+            return 100;
+        }
+       
+        
     }
 
     /**
@@ -168,10 +257,9 @@ contract YieldFarm is ReentrancyGuard, Ownable {
      * @param _newRate New reward rate per second
      */
     function updateRewardRate(uint256 _newRate) external onlyOwner {
-        // TODO: Implement reward rate update logic
-        // Requirements:
-        // 1. Update rewards before changing rate
-        // 2. Set new reward rate
+        require(_newRate > 0, "Invalid new Rate");
+        updateReward(address(0));
+        rewardRate = _newRate;
     }
 
     /**

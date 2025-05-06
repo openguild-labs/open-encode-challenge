@@ -1,15 +1,15 @@
 "use client";
-import WriteContract from "@/components/write-contract";
+import TokenVesting from "@/components/vesting";
 import SigpassKit from "@/components/sigpasskit";
 import Navbar from "@/components/navbar";
 
-export default function SendTransactionPage() {
+export default function VestingSchedulesPage() {
   return (
     <div className="flex flex-col gap-8 max-w-[768px] mx-auto min-h-screen items-center justify-center">
       <SigpassKit />
       <Navbar />
-      <h1 className="text-2xl font-bold">write contract</h1>
-      <WriteContract />
+      <h1 className="text-2xl font-bold">Create Vesting Schedules</h1>
+      <TokenVesting  />
     </div>
   );
 }
