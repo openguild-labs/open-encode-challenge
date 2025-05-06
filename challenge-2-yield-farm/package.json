@@ -14,9 +14,16 @@
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
-    "hardhat": "^2.22.17"
+    "@types/chai": "^4.3.8",
+    "@types/mocha": "^10.0.6",
+    "chai": "^4.3.7",
+    "dotenv": "^16.4.1",
+    "hardhat": "^2.22.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
   },
   "dependencies": {
+    "@nomicfoundation/hardhat-network-helpers": "^1.0.12",
     "@openzeppelin/contracts": "^5.1.0"
   }
 }
