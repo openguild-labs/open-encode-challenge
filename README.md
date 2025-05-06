@@ -32,14 +32,14 @@ git clone https://github.com/openguild-labs/open-encode-challenges.git
 Go to **Participant Registration** section and register to be the workshop participants. Add the below to the list, replace any placeholder with your personal information.
 
 ```
-| 🦄 | Name | Github username | Your current occupation |
+| 🦄 | BrendaGirl | BrendaGirl| Product Manager |
 ```
 
 - Step 5: `Commit` your code and push to the forked Github repository
 
 ```
 git add .
-git commit -m "<Your Name> | Register for OpenGuild x Encode Club Challenges"
+git commit -m "<Oziomas> | Register for OpenGuild x Encode Club Challenges"
 ```
 
 - Step 6: Create a `Pull Request` to merge your changes to this repository and name your PR as `Your name | Register for OpenGuild Sub0 Challenges`
