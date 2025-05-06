@@ -25,7 +25,7 @@ source ~/.bashrc  # for bash
 source ~/.zshrc   # for zsh
 ```
 
-### 2. Install Node.js and npm using Volta
+### 2. Install Node.js and npm using Volta.
 
 ```bash
 # Install Node.js LTS version

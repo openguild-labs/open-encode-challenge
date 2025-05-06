@@ -1,4 +1,4 @@
-# DOT UI Kit
+# DOT UI Kit.
 
 An open-source, up-to-date, opinionated UI scaffolding kit for the Polkadot ecosystem (starting with Asset Hub). The technical stack is:
 

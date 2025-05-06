@@ -11,6 +11,7 @@ Add your information to the below list to officially participate in the workshop
 | Emoji | Name | Github Username                       | Occupations |
 | ----- | ---- | ------------------------------------- | ----------- |
 | 🎅    | Ippo | [NTP-996](https://github.com/NTP-996) | DevRel      |
+| 🎅    | Kakooza Vianey | [kaksv](https://github.com/kaksv/) | Web3 Developer     |
 
 ## 💻 Local development environment setup
 
@@ -33,7 +34,7 @@ source ~/.bashrc  # for bash
 source ~/.zshrc   # for zsh
 ```
 
-### 2. Install Node.js and npm using Volta
+### 2. Install Node.js and npm using Volta.
 
 ```bash
 # Install Node.js LTS version
