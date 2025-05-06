@@ -1,7 +1,8 @@
+![DOT UI Kit](/public/frontend-kit-challenge.webp)
+
 # DOT UI Kit
 
 An open-source, up-to-date, opinionated UI scaffolding kit for the Polkadot ecosystem (starting with Asset Hub). The technical stack is:
-
 - [Next.js](https://nextjs.org/)
 - [Tailwind CSS](https://tailwindcss.com/)
 - [Lucide icons](https://lucide.dev/)
@@ -31,6 +32,7 @@ Before you begin, you need to install the following tools:
 - [npm (latest version or > v10)](https://www.npmjs.com/get-npm)
 - [Git](https://git-scm.com/downloads)
 
+
 ## Getting started
 
 ```
@@ -44,7 +46,6 @@ npm install
 ```
 npm run dev
 ```
-
 Default port is 3002. You can change the port in the `package.json` file.
 
 ```json
@@ -71,3 +72,4 @@ Please see [`docs`](docs) for more information and guidelines for contributing t
 We welcome contributions to DotUI!
 
 Please see [`CONTRIBUTING.md`](CONTRIBUTING.md) for more information and guidelines for contributing to DotUI.
+
