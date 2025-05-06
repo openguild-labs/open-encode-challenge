@@ -42,27 +42,39 @@ const whitelistSchema = z.object({
 });
 
 // Define time units
-const timeUnits = z.enum(["seconds", "minutes", "hours", "days"]);
+// const timeUnits = z.enum(["seconds", "minutes", "hours", "days"]); // Not used with current simple inputs
 
+// Adjusted schema for createVestingSchedule to match current UI (direct seconds/timestamp inputs)
 const createScheduleSchema = z.object({
   beneficiarySchedule: z.string().refine(isAddress, {
     message: "Please enter a valid Ethereum address.",
   }),
-  amount: z.string().refine((val) => !isNaN(parseFloat(val)) && parseFloat(val) > 0, {
+  amountSchedule: z.string().refine((val) => !isNaN(parseFloat(val)) && parseFloat(val) > 0, {
     message: "Amount must be a positive number.",
   }),
-  // Use separate fields for value and unit
-  cliffValue: z.string().refine((val) => !isNaN(parseInt(val)) && parseInt(val) >= 0, {
-    message: "Cliff value must be a non-negative integer.",
-  }),
-  cliffUnit: timeUnits,
-  durationValue: z.string().refine((val) => !isNaN(parseInt(val)) && parseInt(val) > 0, {
-    message: "Duration value must be a positive integer.",
-  }),
-  durationUnit: timeUnits,
-  startTime: z.string().refine((val) => !isNaN(Date.parse(val)), { // Validate as a parseable date string
-    message: "Please select a valid start date and time.",
-  }),
+  cliffSchedule: z.string()
+    .refine((val) => /^\d+$/.test(val) && parseInt(val) >= 0, {
+      message: "Cliff must be a non-negative number of seconds.",
+    }),
+  durationSchedule: z.string()
+    .refine((val) => /^\d+$/.test(val) && parseInt(val) > 0, {
+      message: "Duration must be a positive number of seconds.",
+    }),
+  startTimeSchedule: z.string()
+    .refine((val) => /^\d+$/.test(val) && parseInt(val) >= 0, {
+      message: "Start time must be a valid Unix timestamp (non-negative number).",
+    }),
+})
+.refine(data => {
+    const cliffSec = parseInt(data.cliffSchedule);
+    const durationSec = parseInt(data.durationSchedule);
+    if (!isNaN(cliffSec) && !isNaN(durationSec)) {
+        return cliffSec <= durationSec;
+    }
+    return true; // Individual field validation will catch non-numeric inputs
+}, {
+    message: "Cliff cannot be greater than duration.",
+    path: ["cliffSchedule"], // Associates error with the cliff field
 });
 
 const revokeSchema = z.object({
@@ -78,14 +90,55 @@ export default function TokenVestingComponent() {
   const { toast } = useToast();
   const { data: hash, writeContract, isPending, error: writeError } = useWriteContract();
 
-  // --- State for UI elements ---
-  const [beneficiaryWhitelist, setBeneficiaryWhitelist] = useState("");
-  const [beneficiarySchedule, setBeneficiarySchedule] = useState("");
-  const [amountSchedule, setAmountSchedule] = useState("");
-  const [cliffSchedule, setCliffSchedule] = useState("");
-  const [durationSchedule, setDurationSchedule] = useState("");
-  const [startTimeSchedule, setStartTimeSchedule] = useState("");
-  const [beneficiaryRevoke, setBeneficiaryRevoke] = useState("");
+  // --- Remove old state for form inputs ---
+  // const [beneficiaryWhitelist, setBeneficiaryWhitelist] = useState("");
+  // const [beneficiarySchedule, setBeneficiarySchedule] = useState("");
+  // const [amountSchedule, setAmountSchedule] = useState("");
+  // const [cliffSchedule, setCliffSchedule] = useState("");
+  // const [durationSchedule, setDurationSchedule] = useState("");
+  // const [startTimeSchedule, setStartTimeSchedule] = useState("");
+  // const [beneficiaryRevoke, setBeneficiaryRevoke] = useState("");
+
+  // --- React Hook Form Instances ---
+  const whitelistForm = useForm<z.infer<typeof whitelistSchema>>({
+    resolver: zodResolver(whitelistSchema),
+    defaultValues: { beneficiaryWhitelist: undefined }, // Changed from ""
+  });
+
+  const scheduleForm = useForm<z.infer<typeof createScheduleSchema>>({
+    resolver: zodResolver(createScheduleSchema),
+    defaultValues: {
+      beneficiarySchedule: undefined, // Changed from ""
+      amountSchedule: "",
+      cliffSchedule: "",
+      durationSchedule: "",
+      startTimeSchedule: "",
+    },
+  });
+
+  const revokeForm = useForm<z.infer<typeof revokeSchema>>({
+    resolver: zodResolver(revokeSchema),
+    defaultValues: { beneficiaryRevoke: undefined }, // Changed from ""
+  });
+
+  // Generic handler for form submission errors to show a toast
+  const onFormError = (errors: any) => {
+    console.error("Form validation errors:", errors);
+    // Extract the first error message to display in toast, or a generic one
+    let mainErrorMessage = "Please check the form for errors and try again.";
+    const errorKeys = Object.keys(errors);
+    if (errorKeys.length > 0) {
+        const firstErrorField = errors[errorKeys[0]];
+        if (firstErrorField && firstErrorField.message) {
+            mainErrorMessage = typeof firstErrorField.message === 'string' ? firstErrorField.message : mainErrorMessage;
+        }
+    }
+    toast({
+      variant: "destructive",
+      title: "Validation Error",
+      description: mainErrorMessage,
+    });
+  };
 
   // --- Read Contract Data ---
   // Fetch token decimals (assuming the vesting contract's token() function returns the ERC20 address)
@@ -129,14 +182,10 @@ export default function TokenVestingComponent() {
     if (isConfirmed) {
       toast({ title: "Transaction Successful", description: "Your transaction has been confirmed." });
       refetchVestedAmount(); // Refetch vested amount after a successful transaction
-      // Optionally clear form fields
-      setBeneficiaryWhitelist("");
-      setBeneficiarySchedule("");
-      setAmountSchedule("");
-      setCliffSchedule("");
-      setDurationSchedule("");
-      setStartTimeSchedule("");
-      setBeneficiaryRevoke("");
+      // Reset forms
+      whitelistForm.reset();
+      scheduleForm.reset();
+      revokeForm.reset();
     }
     if (writeError) {
       toast({ variant: "destructive", title: "Transaction Error", description: writeError.message });
@@ -144,7 +193,7 @@ export default function TokenVestingComponent() {
     if (receiptError) {
       toast({ variant: "destructive", title: "Confirmation Error", description: receiptError.message });
     }
-  }, [isConfirmed, writeError, receiptError, toast, refetchVestedAmount]);
+  }, [isConfirmed, writeError, receiptError, toast, refetchVestedAmount, whitelistForm, scheduleForm, revokeForm]);
 
   // --- Set isClient to true on mount ---
   useEffect(() => {
@@ -156,64 +205,50 @@ export default function TokenVestingComponent() {
       return isAddress(addr);
   }
 
-  // --- Handler Functions ---
-  const handleAddToWhitelist = async () => {
+  // --- Handler Functions (Form Submit Handlers) ---
+  const onSubmitWhitelist = async (data: z.infer<typeof whitelistSchema>) => {
     if (!connectedAddress) return toast({ variant: "destructive", title: "Error", description: "Wallet not connected." });
-    if (!beneficiaryWhitelist || !isValidAddress(beneficiaryWhitelist)) {
-        return toast({ variant: "destructive", title: "Error", description: "Please enter a valid beneficiary address." });
-    }
+    // Validation is handled by Zod/react-hook-form
     writeContract({
       address: tokenVestingContractAddress,
       abi: tokenVestingAbi,
       functionName: 'addToWhitelist',
-      args: [beneficiaryWhitelist],
-      account: connectedAddress, // Specify the sender account
+      args: [data.beneficiaryWhitelist as Address],
+      account: connectedAddress,
     });
   };
 
-  const handleCreateSchedule = async () => {
+  const onSubmitSchedule = async (data: z.infer<typeof createScheduleSchema>) => {
     if (!connectedAddress) return toast({ variant: "destructive", title: "Error", description: "Wallet not connected." });
-    if (!beneficiarySchedule || !isValidAddress(beneficiarySchedule)) {
-        return toast({ variant: "destructive", title: "Error", description: "Please enter a valid beneficiary address." });
-    }
-    if (!amountSchedule || !cliffSchedule || !durationSchedule || !startTimeSchedule) {
-      return toast({ variant: "destructive", title: "Error", description: "Please fill all schedule fields." });
-    }
     if (tokenDecimals === undefined) {
-        return toast({ variant: "destructive", title: "Error", description: "Could not determine token decimals." });
+        return toast({ variant: "destructive", title: "Error", description: "Could not determine token decimals. Please wait or refresh." });
     }
 
     try {
-      const amountInSmallestUnit = parseUnits(amountSchedule, tokenDecimals);
-      const cliffNum = Number(cliffSchedule);
-      const durationNum = Number(durationSchedule);
-      const startTimeNum = Number(startTimeSchedule);
+      const amountInSmallestUnit = parseUnits(data.amountSchedule, tokenDecimals);
+      const cliffNum = parseInt(data.cliffSchedule, 10); // Changed to parseInt, ensure base 10
+      const durationNum = parseInt(data.durationSchedule, 10); // Changed to parseInt, ensure base 10
+      const startTimeNum = BigInt(data.startTimeSchedule); // Kept as BigInt, assuming ABI matches
 
-      if (isNaN(cliffNum) || isNaN(durationNum) || isNaN(startTimeNum) || cliffNum < 0 || durationNum <= 0 || startTimeNum < 0) {
-        return toast({ variant: "destructive", title: "Input Error", description: "Invalid number format for cliff, duration, or start time." });
-      }
-
-      // Add check: cliff must be less than or equal to duration
-      if (cliffNum > durationNum) {
-        return toast({ variant: "destructive", title: "Input Error", description: "Cliff cannot be greater than duration." });
-      }
+      // Cross-field validation (cliff <= duration) is handled by Zod .refine
+      // Individual field format/range validation is handled by Zod field definitions
 
       writeContract({
         address: tokenVestingContractAddress,
         abi: tokenVestingAbi,
         functionName: 'createVestingSchedule',
         args: [
-          beneficiarySchedule,
-          amountInSmallestUnit, // Use parsed amount
+          data.beneficiarySchedule as Address,
+          amountInSmallestUnit,
           cliffNum,
           durationNum,
-          BigInt(startTimeNum), // Convert startTime to BigInt
+          startTimeNum,
         ],
-        account: connectedAddress, // Specify the sender account
+        account: connectedAddress,
       });
     } catch (e) {
       console.error("Error creating schedule:", e);
-      toast({ variant: "destructive", title: "Input Error", description: `Failed to parse amount or other numeric values. ${e instanceof Error ? e.message : ''}` });
+      toast({ variant: "destructive", title: "Input Error", description: `Failed to process schedule values. ${e instanceof Error ? e.message : String(e)}` });
     }
   };
 
@@ -227,17 +262,15 @@ export default function TokenVestingComponent() {
     });
   };
 
-  const handleRevokeVesting = async () => {
+  const onSubmitRevoke = async (data: z.infer<typeof revokeSchema>) => {
     if (!connectedAddress) return toast({ variant: "destructive", title: "Error", description: "Wallet not connected." });
-    if (!beneficiaryRevoke || !isValidAddress(beneficiaryRevoke)) {
-        return toast({ variant: "destructive", title: "Error", description: "Please enter a valid beneficiary address to revoke." });
-    }
+    // Validation handled by Zod/react-hook-form
     writeContract({
       address: tokenVestingContractAddress,
       abi: tokenVestingAbi,
       functionName: 'revokeVesting',
-      args: [beneficiaryRevoke],
-      account: connectedAddress, // Specify the sender account
+      args: [data.beneficiaryRevoke as Address],
+      account: connectedAddress,
     });
   };
 
@@ -306,51 +339,130 @@ export default function TokenVestingComponent() {
         <p className="text-sm text-muted-foreground">These actions typically require the contract owner&apos;s address.</p>
 
         {/* Add to Whitelist */}
-        <div className="space-y-2">
-          <Label htmlFor="whitelist" className="font-medium">Add Beneficiary to Whitelist</Label>
-          <div className="flex gap-2">
-            <Input id="whitelist" placeholder="0x... Beneficiary Address" value={beneficiaryWhitelist} onChange={(e) => setBeneficiaryWhitelist(e.target.value)} />
-            <Button onClick={handleAddToWhitelist} disabled={isPending || isConfirming}>Add</Button>
-          </div>
-        </div>
+        <Form {...whitelistForm}>
+          <form onSubmit={whitelistForm.handleSubmit(onSubmitWhitelist, onFormError)} className="space-y-2">
+            <FormField
+              control={whitelistForm.control}
+              name="beneficiaryWhitelist"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel htmlFor="whitelist-beneficiary" className="font-medium">Add Beneficiary to Whitelist</FormLabel>
+                  <div className="flex gap-2">
+                    <FormControl>
+                      <Input id="whitelist-beneficiary" placeholder="0x... Beneficiary Address" {...field} />
+                    </FormControl>
+                    <Button type="submit" disabled={isPending || isConfirming || whitelistForm.formState.isSubmitting}>
+                      {whitelistForm.formState.isSubmitting ? "Adding..." : "Add"}
+                    </Button>
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </form>
+        </Form>
 
         {/* Create Vesting Schedule */}
-        <div className="space-y-2">
-          <h3 className="font-medium">Create Vesting Schedule</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <Label htmlFor="beneficiary">Beneficiary Address</Label>
-              <Input id="beneficiary" placeholder="0x..." value={beneficiarySchedule} onChange={(e) => setBeneficiarySchedule(e.target.value)} />
+        <Form {...scheduleForm}>
+          <form onSubmit={scheduleForm.handleSubmit(onSubmitSchedule, onFormError)} className="space-y-3">
+            <h3 className="font-medium pt-2">Create Vesting Schedule</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <FormField
+                control={scheduleForm.control}
+                name="beneficiarySchedule"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel htmlFor="beneficiary">Beneficiary Address</FormLabel>
+                    <FormControl>
+                      <Input id="beneficiary" placeholder="0x..." {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={scheduleForm.control}
+                name="amountSchedule"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel htmlFor="amount">Token Amount</FormLabel>
+                    <FormControl>
+                      {isLoadingDecimals ? <Skeleton className="h-9 w-full" /> : <Input id="amount" placeholder={`e.g., 1000 (using ${tokenDecimals ?? 'N/A'} decimals)`} {...field} />}
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={scheduleForm.control}
+                name="cliffSchedule"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel htmlFor="cliff">Cliff (seconds)</FormLabel>
+                    <FormControl>
+                      <Input id="cliff" type="number" min="0" placeholder="e.g., 86400 (1 day)" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={scheduleForm.control}
+                name="durationSchedule"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel htmlFor="duration">Duration (seconds)</FormLabel>
+                    <FormControl>
+                      <Input id="duration" type="number" min="1" placeholder="e.g., 31536000 (1 year)" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={scheduleForm.control}
+                name="startTimeSchedule"
+                render={({ field }) => (
+                  <FormItem className="sm:col-span-2">
+                    <FormLabel htmlFor="startTime">Start Time (Unix Timestamp)</FormLabel>
+                    <FormControl>
+                      <Input id="startTime" type="number" min="0" placeholder="Seconds since epoch, e.g., 1735689600" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
-            <div className="space-y-1">
-              <Label htmlFor="amount">Token Amount</Label>
-              {isLoadingDecimals ? <Skeleton className="h-9 w-full" /> : <Input id="amount" placeholder={`e.g., 1000 (using ${tokenDecimals ?? 'N/A'} decimals)`} value={amountSchedule} onChange={(e) => setAmountSchedule(e.target.value)} />}
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="cliff">Cliff (seconds)</Label>
-              <Input id="cliff" type="number" min="0" placeholder="e.g., 86400 (1 day)" value={cliffSchedule} onChange={(e) => setCliffSchedule(e.target.value)} />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="duration">Duration (seconds)</Label>
-              <Input id="duration" type="number" min="1" placeholder="e.g., 31536000 (1 year)" value={durationSchedule} onChange={(e) => setDurationSchedule(e.target.value)} />
-            </div>
-            <div className="space-y-1 sm:col-span-2">
-              <Label htmlFor="startTime">Start Time (Unix Timestamp)</Label>
-              <Input id="startTime" type="number" min="0" placeholder="Seconds since epoch, e.g., 1735689600" value={startTimeSchedule} onChange={(e) => setStartTimeSchedule(e.target.value)} />
-            </div>
-          </div>
-          <Button onClick={handleCreateSchedule} disabled={isPending || isConfirming || isLoadingDecimals || tokenDecimals === undefined} className="mt-2">Create Schedule</Button>
-           {(isLoadingTokenAddress || isLoadingDecimals) && <p className="text-xs text-muted-foreground mt-1">Fetching token info...</p>}
-        </div>
+            <Button type="submit" disabled={isPending || isConfirming || isLoadingDecimals || tokenDecimals === undefined || scheduleForm.formState.isSubmitting} className="mt-2">
+              {scheduleForm.formState.isSubmitting ? "Creating..." : "Create Schedule"}
+            </Button>
+            {(isLoadingTokenAddress || isLoadingDecimals) && <p className="text-xs text-muted-foreground mt-1">Fetching token info...</p>}
+          </form>
+        </Form>
 
         {/* Revoke Vesting */}
-        <div className="space-y-2">
-          <Label htmlFor="revoke" className="font-medium">Revoke Vesting for Beneficiary</Label>
-           <div className="flex gap-2">
-            <Input id="revoke" placeholder="0x... Beneficiary Address" value={beneficiaryRevoke} onChange={(e) => setBeneficiaryRevoke(e.target.value)} />
-            <Button onClick={handleRevokeVesting} disabled={isPending || isConfirming} variant="destructive">Revoke</Button>
-          </div>
-        </div>
+        <Form {...revokeForm}>
+          <form onSubmit={revokeForm.handleSubmit(onSubmitRevoke, onFormError)} className="space-y-2 pt-2">
+            <FormField
+              control={revokeForm.control}
+              name="beneficiaryRevoke"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel htmlFor="revoke-beneficiary" className="font-medium">Revoke Vesting for Beneficiary</FormLabel>
+                  <div className="flex gap-2">
+                    <FormControl>
+                      <Input id="revoke-beneficiary" placeholder="0x... Beneficiary Address" {...field} />
+                    </FormControl>
+                    <Button type="submit" variant="destructive" disabled={isPending || isConfirming || revokeForm.formState.isSubmitting}>
+                      {revokeForm.formState.isSubmitting ? "Revoking..." : "Revoke"}
+                    </Button>
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </form>
+        </Form>
       </div>
 
       {/* Transaction Status Display */}
