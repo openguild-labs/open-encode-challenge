@@ -18,16 +18,16 @@ export default function Home() {
             <Link href="/wallet">Wallet</Link>
           </li>
           <li className="mb-2">
-            <Link href="/send-transaction">Send transaction</Link>
+            <Link href="/vesting">Token Vesting</Link>
           </li>
-          <li className="mb-2">
+           <li className="mb-2">
             <Link href="/write-contract">Write contract</Link>
           </li>
           <li className="mb-2">
-            <Link href="/mint-redeem-lst-bifrost">Mint/Redeem LST Bifrost</Link>
-          </li>
+            <Link href="/mint-redeem-lst-bifrost">Remove Vesting Beneficiaries</Link>
+          </li> 
         </ol>
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
+        {/* <div className="flex gap-4 items-center flex-col sm:flex-row">
           <a
             className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
             href="https://github.com/buildstationorg/dotui"
@@ -51,7 +51,7 @@ export default function Home() {
           >
             Read our docs
           </a>
-        </div>
+        </div> */}
       </div>
       <footer className="row-start-3 flex flex-col gap-4">
         <div className="flex gap-6 flex-wrap items-center justify-center">
