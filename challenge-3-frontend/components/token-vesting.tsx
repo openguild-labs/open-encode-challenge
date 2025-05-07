@@ -5,34 +5,20 @@ import { useAccount, useReadContract, useWriteContract, useWaitForTransactionRec
 import { tokenVestingAbi, tokenVestingContractAddress } from '@/lib/abi';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-// Import parseUnits and formatUnits
-import { parseUnits, formatUnits, isAddress, Address } from 'viem';
-import { Skeleton } from "@/components/ui/skeleton"; // Import Skeleton
+import { parseUnits, formatUnits, isAddress, Address } from 'viem'; // Ensures parseEther is not lingering if it was there
+import { Skeleton } from "@/components/ui/skeleton";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { parseEther } from "viem";
-// Import Select components
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-
+} from "@/components/ui/form"; // Ensures FormDescription is not in this import if it was
 
 // Define validation schemas for each tab
 const whitelistSchema = z.object({
@@ -85,8 +71,8 @@ const revokeSchema = z.object({
 
 
 export default function TokenVestingComponent() {
-  const [isClient, setIsClient] = useState(false); // Add isClient state
-  const { address: connectedAddress, isConnected, status } = useAccount(); // Get status
+  const [isClient, setIsClient] = useState(false);
+  const { address: connectedAddress, status } = useAccount(); // Ensures isConnected is not destructured if unused
   const { toast } = useToast();
   const { data: hash, writeContract, isPending, error: writeError } = useWriteContract();
 
@@ -122,7 +108,7 @@ export default function TokenVestingComponent() {
   });
 
   // Generic handler for form submission errors to show a toast
-  const onFormError = (errors: any) => {
+  const onFormError = (errors: Record<string, { message?: string }>) => { // Ensures 'any' type is replaced
     console.error("Form validation errors:", errors);
     // Extract the first error message to display in toast, or a generic one
     let mainErrorMessage = "Please check the form for errors and try again.";
@@ -199,11 +185,6 @@ export default function TokenVestingComponent() {
   useEffect(() => {
     setIsClient(true);
   }, []);
-
-  // --- Helper to validate address ---
-  const isValidAddress = (addr: string): addr is Address => {
-      return isAddress(addr);
-  }
 
   // --- Handler Functions (Form Submit Handlers) ---
   const onSubmitWhitelist = async (data: z.infer<typeof whitelistSchema>) => {
