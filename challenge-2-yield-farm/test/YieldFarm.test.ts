@@ -12,7 +12,7 @@ describe("YieldFarm", function () {
 
   // Test values adjusted for uint72 limits (4.7M max)
   const TEST_AMOUNT = 100000; // 100,000 tokens
-  const SMALL_AMOUNT = 1000;  // 1,000 token
+  const SMALL_AMOUNT = 1000;  // 1,000 tokens
 
   before(async function () {
     [owner, user1, user2] = await ethers.getSigners();
@@ -26,11 +26,14 @@ describe("YieldFarm", function () {
     const YieldFarmFactory = await ethers.getContractFactory("YieldFarm");
     farm = await YieldFarmFactory.deploy(lpToken.target, rewardToken.target, 100);
 
-    // Mint test tokens
+    // Mint test tokens to users
     await lpToken.mint(user1.address, TEST_AMOUNT * 10);
     await lpToken.mint(user2.address, TEST_AMOUNT * 10);
     
-    // Approve farm
+    // Mint reward tokens to the YieldFarm contract (CRITICAL FIX)
+    await rewardToken.mint(farm.target, TEST_AMOUNT * 100); // Ensure enough rewards
+    
+    // Approve farm to spend users' LP tokens
     await lpToken.connect(user1).approve(farm.target, ethers.MaxUint256);
     await lpToken.connect(user2).approve(farm.target, ethers.MaxUint256);
   });
