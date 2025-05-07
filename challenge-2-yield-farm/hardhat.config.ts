@@ -9,13 +9,18 @@ const config: HardhatUserConfig = {
     settings: {
       optimizer: {
         enabled: true,
-        runs: 1, // Lower optimization runs for simpler bytecode
+        runs: 1,
       },
-      evmVersion: "london", // Use an older EVM version for better compatibility
-      viaIR: false, // Disable IR-based compilation
+      evmVersion: "london",
+      viaIR: false,
     },
   },
   networks: {
+    hardhat: {
+      chainId: 31337,
+      // For testing, allow unlimited contract size
+      allowUnlimitedContractSize: true,
+    },
     "asset-hub-westend": {
       url: "https://westend-asset-hub-eth-rpc.polkadot.io",
       chainId: 420420421,
@@ -23,6 +28,20 @@ const config: HardhatUserConfig = {
       gasPrice: "auto",
       timeout: 100000,
     },
+  },
+  paths: {
+    sources: "./contracts",
+    tests: "./test",
+    artifacts: "./artifacts",
+    cache: "./cache",
+  },
+  mocha: {
+    timeout: 40000, // 40 seconds for Polkadot network tests
+  },
+  // Add typechain support
+  typechain: {
+    outDir: "typechain-types",
+    target: "ethers-v6",
   },
 };
 

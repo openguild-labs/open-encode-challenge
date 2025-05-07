@@ -1,148 +1,125 @@
-// Challenge: Token Vesting Contract
-/*
-Create a token vesting contract with the following requirements:
-
-1. The contract should allow an admin to create vesting schedules for different beneficiaries
-2. Each vesting schedule should have:
-   - Total amount of tokens to be vested
-   - Cliff period (time before any tokens can be claimed)
-   - Vesting duration (total time for all tokens to vest)
-   - Start time
-3. After the cliff period, tokens should vest linearly over time
-4. Beneficiaries should be able to claim their vested tokens at any time
-5. Admin should be able to revoke unvested tokens from a beneficiary
-
-Bonus challenges:
-- Add support for multiple token types
-- Implement a whitelist for beneficiaries
-- Add emergency pause functionality
-
-Here's your starter code:
-*/
-
 // SPDX-License-Identifier: MIT
+// This license means anyone can use this code freely
 pragma solidity ^0.8.0;
 
+// Importing standard token and ownership interfaces
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/Pausable.sol";
-import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-contract TokenVesting is Ownable(msg.sender), Pausable, ReentrancyGuard {
+// Main contract for locking tokens and releasing them over time
+contract TokenVesting is Ownable {
+    // Structure to store vesting details for each person
     struct VestingSchedule {
-    // TODO: Define the vesting schedule struct
+        uint128 amount;      // Total tokens they will receive
+        uint64 start;        // When the vesting begins
+        uint32 cliff;        // Initial lock period before any tokens release
+        uint32 duration;    // Total time over which tokens gradually unlock
+        uint128 claimed;    // How many tokens they've already taken
+        bool revoked;       // Whether the admin canceled this vesting
     }
 
-    // Token being vested
-    // TODO: Add state variables
+    // The token that will be locked and released
+    IERC20 public immutable token;
+    
+    // Storage for all vesting plans
+    mapping(address => VestingSchedule) private _schedules;
+    
+    // List of approved addresses that can receive tokens
+    mapping(address => bool) private _whitelist;
 
+    // Events that get logged when important things happen:
+    event ScheduleCreated(address indexed beneficiary, uint256 amount); // When a new vesting plan is made
+    event TokensClaimed(address indexed beneficiary, uint256 amount);  // When someone takes their tokens
+    event VestingRevoked(address indexed beneficiary);                 // When an admin cancels a vesting
 
-    // Mapping from beneficiary to vesting schedule
-    // TODO: Add state variables
-
-    // Whitelist of beneficiaries
-    // TODO: Add state variables
-
-    // Events
-    event VestingScheduleCreated(address indexed beneficiary, uint256 amount);
-    event TokensClaimed(address indexed beneficiary, uint256 amount);
-    event VestingRevoked(address indexed beneficiary);
-    event BeneficiaryWhitelisted(address indexed beneficiary);
-    event BeneficiaryRemovedFromWhitelist(address indexed beneficiary);
-
-    constructor(address tokenAddress) {
-           // TODO: Initialize the contract
-
+    // Set up the contract with the token we'll be using
+    constructor(address tokenAddress) Ownable(msg.sender) {
+        token = IERC20(tokenAddress);
     }
 
-    // Modifier to check if beneficiary is whitelisted
-    modifier onlyWhitelisted(address beneficiary) {
-        require(whitelist[beneficiary], "Beneficiary not whitelisted");
-        _;
-    }
-
+    // ADMIN FUNCTION: Add someone to the approved list
     function addToWhitelist(address beneficiary) external onlyOwner {
-        require(beneficiary != address(0), "Invalid address");
-        whitelist[beneficiary] = true;
-        emit BeneficiaryWhitelisted(beneficiary);
+        require(beneficiary != address(0), "Invalid address"); // Can't use zero address
+        _whitelist[beneficiary] = true; // Add to approved list
     }
 
-    function removeFromWhitelist(address beneficiary) external onlyOwner {
-        whitelist[beneficiary] = false;
-        emit BeneficiaryRemovedFromWhitelist(beneficiary);
-    }
-
+    // ADMIN FUNCTION: Create a vesting plan for someone
     function createVestingSchedule(
-        address beneficiary,
-        uint256 amount,
-        uint256 cliffDuration,
-        uint256 vestingDuration,
-        uint256 startTime
-    ) external onlyOwner onlyWhitelisted(beneficiary) whenNotPaused {
-        // TODO: Implement vesting schedule creation
+        address beneficiary,  // Who gets the tokens
+        uint128 amount,       // How many tokens
+        uint32 cliff,         // Initial lock period (seconds)
+        uint32 duration,      // Total vesting period (seconds)
+        uint64 startTime      // When vesting starts
+    ) external onlyOwner {
+        require(_whitelist[beneficiary], "Not whitelisted"); // Must be approved
+        require(amount > 0, "Amount must be positive"); // Can't vest zero tokens
+        require(_schedules[beneficiary].amount == 0, "Schedule exists"); // No duplicate plans
+        
+        // Create the vesting plan
+        _schedules[beneficiary] = VestingSchedule({
+            amount: amount,
+            start: startTime,
+            cliff: cliff,
+            duration: duration,
+            claimed: 0,
+            revoked: false
+        });
+
+        // Move the tokens into this contract for safekeeping
+        require(token.transferFrom(msg.sender, address(this), amount), "Transfer failed");
+        emit ScheduleCreated(beneficiary, amount);
     }
 
-    function calculateVestedAmount(
-        address beneficiary
-    ) public view returns (uint256) {
-        // TODO: Implement vested amount calculation
+    // Calculate how many tokens someone can claim right now
+    function calculateVestedAmount(address beneficiary) public view returns (uint256) {
+        VestingSchedule memory s = _schedules[beneficiary];
+        if (s.amount == 0) return 0; // No plan = no tokens
+
+        uint256 currentTime = block.timestamp;
+        
+        // Before cliff period ends = nothing available
+        if (currentTime < s.start + s.cliff) return 0;
+        
+        // After full duration = everything available
+        if (currentTime >= s.start + s.duration) return s.amount - s.claimed;
+
+        // During vesting period = proportional amount available
+        uint256 elapsed = currentTime - s.start;
+        uint256 vested = (s.amount * elapsed) / s.duration;
+        return vested > s.amount ? s.amount - s.claimed : vested - s.claimed;
     }
 
-    function claimVestedTokens() external nonReentrant whenNotPaused {
-           // TODO: Implement token claiming
+    // Let users claim their available tokens
+    function claimVestedTokens() external {
+        uint256 vested = calculateVestedAmount(msg.sender);
+        require(vested > 0, "No vested tokens"); // Must have something to claim
+
+        VestingSchedule storage s = _schedules[msg.sender];
+        s.claimed += uint128(vested); // Track how much they've taken
+
+        // Send the tokens to them
+        require(token.transfer(msg.sender, vested), "Transfer failed");
+        emit TokensClaimed(msg.sender, vested);
     }
 
+    // ADMIN FUNCTION: Cancel someone's vesting plan
     function revokeVesting(address beneficiary) external onlyOwner {
-        // TODO: Implement vesting revocation
+        VestingSchedule storage s = _schedules[beneficiary];
+        require(s.amount > 0, "No schedule"); // Must have an existing plan
+        require(!s.revoked, "Already revoked"); // Can't cancel twice
 
-    }
+        // Calculate what they've earned so far
+        uint256 vested = calculateVestedAmount(beneficiary);
+        uint256 unvested = s.amount - vested - s.claimed;
 
-    function pause() external onlyOwner {
-        _pause();
-    }
+        // Mark as canceled and adjust amounts
+        s.revoked = true;
+        s.amount = uint128(vested + s.claimed);
 
-    function unpause() external onlyOwner {
-        _unpause();
+        // Return unvested tokens to admin
+        if (unvested > 0) {
+            require(token.transfer(owner(), unvested), "Transfer failed");
+        }
+        emit VestingRevoked(beneficiary);
     }
 }
-
-/*
-Solution template (key points to implement):
-
-1. VestingSchedule struct should contain:
-   - Total amount
-   - Start time
-   - Cliff duration
-   - Vesting duration
-   - Amount claimed
-   - Revoked status
-
-2. State variables needed:
-   - Mapping of beneficiary address to VestingSchedule
-   - ERC20 token reference
-   - Owner/admin address
-
-3. createVestingSchedule should:
-   - Validate input parameters
-   - Create new vesting schedule
-   - Transfer tokens to contract
-   - Emit event
-
-4. calculateVestedAmount should:
-   - Check if cliff period has passed
-   - Calculate linear vesting based on time passed
-   - Account for already claimed tokens
-   - Handle revoked status
-
-5. claimVestedTokens should:
-   - Calculate claimable amount
-   - Update claimed amount
-   - Transfer tokens
-   - Emit event
-
-6. revokeVesting should:
-   - Only allow admin
-   - Calculate and transfer unvested tokens back
-   - Mark schedule as revoked
-   - Emit event
-*/
