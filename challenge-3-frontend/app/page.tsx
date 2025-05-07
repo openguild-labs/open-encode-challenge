@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { FaucetCard } from "@/components/ui/faucetcard"
 
 export default function Home() {
   return (
@@ -51,6 +52,12 @@ export default function Home() {
           >
             Read our docs
           </a>
+          <Link
+            href="/faucet"
+            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center bg-primary text-primary-foreground hover:bg-primary/90 text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
+          >
+            Request Polkadot
+          </Link>
         </div>
       </div>
       <footer className="row-start-3 flex flex-col gap-4">
