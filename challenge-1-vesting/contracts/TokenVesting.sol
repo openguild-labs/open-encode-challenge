@@ -24,88 +24,232 @@ Here's your starter code:
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/Pausable.sol";
-import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-contract TokenVesting is Ownable(msg.sender), Pausable, ReentrancyGuard {
+contract TokenVesting {
+    using SafeERC20 for IERC20;
+    
     struct VestingSchedule {
-    // TODO: Define the vesting schedule struct
+        address tokenAddress;
+        uint96 totalAmount;
+        uint32 startTime;
+        uint32 cliffDuration;
+        uint32 vestingDuration;
+        uint96 amountClaimed;
+        bool revoked;
     }
-
-    // Token being vested
-    // TODO: Add state variables
-
-
-    // Mapping from beneficiary to vesting schedule
-    // TODO: Add state variables
-
-    // Whitelist of beneficiaries
-    // TODO: Add state variables
+    
+    error InvalidAddress();
+    error BeneficiaryNotWhitelisted(address beneficiary);
+    error InvalidAmount();
+    error InvalidDuration();
+    error InvalidStartTime();
+    error BeneficiaryAlreadyHasSchedule(address beneficiary, address token);
+    error InsufficientAllowance(uint256 required, uint256 actual);
+    error NoVestingScheduleFound(address beneficiary, address token);
+    error VestingScheduleRevoked();
+    error NoVestedTokensAvailable();
+    error OwnableUnauthorizedAccount(address account);
+    error EnforcedPause();
+    
+    mapping(address => mapping(address => VestingSchedule)) private _schedules;
+    mapping(address => bool) private _whitelist;
+    address private immutable _owner;
+    bool private _paused;
 
     // Events
-    event VestingScheduleCreated(address indexed beneficiary, uint256 amount);
-    event TokensClaimed(address indexed beneficiary, uint256 amount);
-    event VestingRevoked(address indexed beneficiary);
+    event VestingScheduleCreated(
+        address indexed beneficiary,
+        address indexed tokenAddress,
+        uint256 amount,
+        uint256 startTime,
+        uint256 cliffDuration,
+        uint256 vestingDuration
+    );
+    event TokensClaimed(address indexed beneficiary, address indexed tokenAddress, uint256 amount);
+    event VestingRevoked(address indexed beneficiary, address indexed tokenAddress, uint256 unvestedAmount);
     event BeneficiaryWhitelisted(address indexed beneficiary);
     event BeneficiaryRemovedFromWhitelist(address indexed beneficiary);
+    event Paused(address account);
+    event Unpaused(address account);
 
-    constructor(address tokenAddress) {
-           // TODO: Initialize the contract
-
+    constructor() {
+        _owner = msg.sender;
     }
 
-    // Modifier to check if beneficiary is whitelisted
-    modifier onlyWhitelisted(address beneficiary) {
-        require(whitelist[beneficiary], "Beneficiary not whitelisted");
+    modifier onlyOwner() {
+        if (msg.sender != _owner) revert OwnableUnauthorizedAccount(msg.sender);
         _;
     }
 
+    modifier whenNotPaused() {
+        if (_paused) revert EnforcedPause();
+        _;
+    }
+
+    function owner() public view returns (address) {
+        return _owner;
+    }
+
+    function pause() external onlyOwner {
+        _paused = true;
+        emit Paused(msg.sender);
+    }
+
+    function unpause() external onlyOwner {
+        _paused = false;
+        emit Unpaused(msg.sender);
+    }
+
     function addToWhitelist(address beneficiary) external onlyOwner {
-        require(beneficiary != address(0), "Invalid address");
-        whitelist[beneficiary] = true;
+        if (beneficiary == address(0)) revert InvalidAddress();
+        _whitelist[beneficiary] = true;
         emit BeneficiaryWhitelisted(beneficiary);
     }
 
     function removeFromWhitelist(address beneficiary) external onlyOwner {
-        whitelist[beneficiary] = false;
+        _whitelist[beneficiary] = false;
         emit BeneficiaryRemovedFromWhitelist(beneficiary);
     }
 
     function createVestingSchedule(
         address beneficiary,
-        uint256 amount,
-        uint256 cliffDuration,
-        uint256 vestingDuration,
-        uint256 startTime
-    ) external onlyOwner onlyWhitelisted(beneficiary) whenNotPaused {
-        // TODO: Implement vesting schedule creation
+        address tokenAddress,
+        uint96 amount,
+        uint32 cliffDuration,
+        uint32 vestingDuration,
+        uint32 startTime
+    ) external onlyOwner whenNotPaused {
+        _validateVestingParams(beneficiary, tokenAddress, amount, cliffDuration, vestingDuration, startTime);
+        
+        IERC20 token = IERC20(tokenAddress);
+        uint256 allowance = token.allowance(msg.sender, address(this));
+        if (allowance < amount) revert InsufficientAllowance(amount, allowance);
+
+        token.safeTransferFrom(msg.sender, address(this), amount);
+        
+        _schedules[beneficiary][tokenAddress] = VestingSchedule({
+            tokenAddress: tokenAddress,
+            totalAmount: amount,
+            startTime: startTime,
+            cliffDuration: cliffDuration,
+            vestingDuration: vestingDuration,
+            amountClaimed: 0,
+            revoked: false
+        });
+
+        emit VestingScheduleCreated(
+            beneficiary,
+            tokenAddress,
+            amount,
+            startTime,
+            cliffDuration,
+            vestingDuration
+        );
+    }
+
+    function _validateVestingParams(
+        address beneficiary,
+        address tokenAddress, 
+        uint96 amount,
+        uint32 cliffDuration,
+        uint32 vestingDuration,
+        uint32 startTime
+    ) private view {
+        if (beneficiary == address(0) || tokenAddress == address(0)) revert InvalidAddress();
+        if (amount == 0) revert InvalidAmount();
+        if (vestingDuration == 0 || vestingDuration < cliffDuration) revert InvalidDuration();
+        if (startTime < uint32(block.timestamp)) revert InvalidStartTime();
+        if (_schedules[beneficiary][tokenAddress].totalAmount != 0) {
+            revert BeneficiaryAlreadyHasSchedule(beneficiary, tokenAddress);
+        }
+        if (!_whitelist[beneficiary]) revert BeneficiaryNotWhitelisted(beneficiary);
     }
 
     function calculateVestedAmount(
-        address beneficiary
+        address beneficiary,
+        address tokenAddress
     ) public view returns (uint256) {
-        // TODO: Implement vested amount calculation
+        VestingSchedule storage schedule = _schedules[beneficiary][tokenAddress];
+        
+        if (schedule.totalAmount == 0 || schedule.revoked) {
+            return 0;
+        }
+
+        if (block.timestamp < schedule.startTime + schedule.cliffDuration) {
+            return 0;
+        }
+
+        if (block.timestamp >= schedule.startTime + schedule.vestingDuration) {
+            return schedule.totalAmount - schedule.amountClaimed;
+        }
+
+        uint256 elapsedTime = block.timestamp - schedule.startTime;
+        uint256 vestedAmount = (uint256(schedule.totalAmount) * elapsedTime) / schedule.vestingDuration;
+        return vestedAmount - schedule.amountClaimed;
     }
 
-    function claimVestedTokens() external nonReentrant whenNotPaused {
-           // TODO: Implement token claiming
+    function claimVestedTokens(address tokenAddress) external whenNotPaused {
+        VestingSchedule storage schedule = _schedules[msg.sender][tokenAddress];
+        
+        if (schedule.totalAmount == 0) revert NoVestingScheduleFound(msg.sender, tokenAddress);
+        if (schedule.revoked) revert VestingScheduleRevoked();
+
+        uint256 vestedAmount = calculateVestedAmount(msg.sender, tokenAddress);
+        if (vestedAmount == 0) revert NoVestedTokensAvailable();
+
+        schedule.amountClaimed += uint96(vestedAmount);
+
+        IERC20(tokenAddress).safeTransfer(msg.sender, vestedAmount);
+
+        emit TokensClaimed(msg.sender, tokenAddress, vestedAmount);
     }
 
-    function revokeVesting(address beneficiary) external onlyOwner {
-        // TODO: Implement vesting revocation
+    function revokeVesting(address beneficiary, address tokenAddress) external onlyOwner {
+        VestingSchedule storage schedule = _schedules[beneficiary][tokenAddress];
+        
+        if (schedule.totalAmount == 0) revert NoVestingScheduleFound(beneficiary, tokenAddress);
+        if (schedule.revoked) revert VestingScheduleRevoked();
 
+        uint256 vestedAmount = calculateVestedAmount(beneficiary, tokenAddress);
+        uint256 unvestedAmount = schedule.totalAmount - schedule.amountClaimed - vestedAmount;
+
+        schedule.revoked = true;
+        schedule.totalAmount = uint96(schedule.amountClaimed + vestedAmount);
+
+        if (unvestedAmount > 0) {
+            IERC20(tokenAddress).safeTransfer(_owner, unvestedAmount);
+        }
+
+        emit VestingRevoked(beneficiary, tokenAddress, unvestedAmount);
     }
 
-    function pause() external onlyOwner {
-        _pause();
+    function getVestingSchedule(
+        address beneficiary, 
+        address tokenAddress
+    ) external view returns (
+        uint256 totalAmount,
+        uint256 startTime,
+        uint256 cliffDuration,
+        uint256 vestingDuration,
+        uint256 amountClaimed,
+        bool revoked
+    ) {
+        VestingSchedule storage schedule = _schedules[beneficiary][tokenAddress];
+        return (
+            schedule.totalAmount,
+            schedule.startTime,
+            schedule.cliffDuration,
+            schedule.vestingDuration,
+            schedule.amountClaimed,
+            schedule.revoked
+        );
     }
 
-    function unpause() external onlyOwner {
-        _unpause();
+    function whitelist(address beneficiary) external view returns (bool) {
+        return _whitelist[beneficiary];
     }
 }
-
 /*
 Solution template (key points to implement):
 
