@@ -1,40 +1,16 @@
-import Link from "next/link";
-import { ConnectButton } from '@rainbow-me/rainbowkit'; // Import ConnectButton
+"use client";
+
+import { ConnectButton } from '@rainbow-me/rainbowkit';
+import Link from 'next/link';
 
 export default function Navbar() {
   return (
-    <nav className="flex flex-wrap items-center justify-between w-full p-4 gap-2 border-b mb-4">
-      <div className="flex flex-wrap items-center justify-center gap-2">
-        <Link className="text-sm underline underline-offset-4" href="/">
-          Home
+    <nav className="bg-background border-b">
+      <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+        <Link href="/" className="text-xl font-bold text-foreground">
+          TokenVesting
         </Link>
-        <Link className="text-sm underline underline-offset-4" href="/token-vesting">
-          Token Vesting
-        </Link>
-        <Link className="text-sm underline underline-offset-4" href="/wallet">
-          Wallet
-        </Link>
-        <Link
-          className="text-sm underline underline-offset-4"
-          href="/send-transaction"
-        >
-          Send transaction
-        </Link>
-        <Link
-          className="text-sm underline underline-offset-4"
-          href="/write-contract"
-        >
-          Write contract
-        </Link>
-        <Link
-          className="text-sm underline underline-offset-4"
-          href="/mint-redeem-lst-bifrost"
-        >
-          Mint/Redeem LST Bifrost
-        </Link>
-      </div>
-      <div>
-        <ConnectButton /> {/* Add the ConnectButton here */}
+        <ConnectButton />
       </div>
     </nav>
   );
