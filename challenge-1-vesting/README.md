@@ -10,7 +10,7 @@ Add your information to the below list to officially participate in the workshop
 
 | Emoji | Name    | Github Username                            | Occupations      |
 | ----- | ----    | -------------------------------------      | -----------      |
-| 👨🏻‍💻    | Toheeb  | [Horlarmmy](https://github.com/Horlarmmy)  | Software Enigeer |
+| 👨🏻‍💻    | Toheeb  | [Horlarmmy](https://github.com/Horlarmmy)  | Software Engineer |
 
 ## 💻 Local development environment setup
 
