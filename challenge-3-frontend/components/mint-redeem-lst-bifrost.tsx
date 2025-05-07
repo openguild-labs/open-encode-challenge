@@ -10,8 +10,9 @@ import {
   useConfig,
   useWriteContract,
   useReadContracts,
-  useAccount
+  useAccount,
 } from "wagmi";
+import type { WriteContractErrorType } from "wagmi/actions";
 
 // viem
 import { parseUnits, formatUnits } from "viem";
@@ -96,24 +97,21 @@ import { addressAtom } from "@/components/sigpasskit";
 import { localConfig } from "@/app/providers";
 
 // abi for the Moonbeam SLPX contract and ERC20 token
-import {erc20Abi , moonbeamSlpxAbi} from "@/lib/abi";
+import { erc20Abi, moonbeamSlpxAbi } from "@/lib/abi";
 
 export default function MintRedeemLstBifrost() {
-  // useConfig hook to get config
+  /* --------------------------------------------------------------------- */
+  /*                             initial hooks                             */
+  /* --------------------------------------------------------------------- */
   const config = useConfig();
-
-  // useAccount hook to get account
   const account = useAccount();
-
-  // useMediaQuery hook to check if the screen is desktop
   const isDesktop = useMediaQuery("(min-width: 768px)");
-  // useState hook to open/close dialog/drawer
   const [open, setOpen] = useState(false);
-
-  // get the address from session storage
   const address = useAtomValue(addressAtom);
 
-  // useWriteContract hook to write contract
+  /* --------------------------------------------------------------------- */
+  /*                         write contract helpers                        */
+  /* --------------------------------------------------------------------- */
   const {
     data: hash,
     error,
@@ -123,15 +121,16 @@ export default function MintRedeemLstBifrost() {
     config: address ? localConfig : config,
   });
 
+  /* --------------------------------------------------------------------- */
+  /*                               constants                               */
+  /* --------------------------------------------------------------------- */
   const XCDOT_CONTRACT_ADDRESS = "0xFfFFfFff1FcaCBd218EDc0EbA20Fc2308C778080";
   const XCASTR_CONTRACT_ADDRESS = "0xFfFFFfffA893AD19e540E172C10d78D4d479B5Cf";
-
   // GLMR is both the native token of Moonbeam and an ERC20 token
   const GLMR_CONTRACT_ADDRESS = "0x0000000000000000000000000000000000000802";
   const BIFROST_SLPX_CONTRACT_ADDRESS =
     "0xF1d4797E51a4640a76769A50b57abE7479ADd3d8";
 
-  // Get the contract address based on selected token
   const getContractAddress = (token: string) => {
     switch (token) {
       case "xcdot":
@@ -145,13 +144,13 @@ export default function MintRedeemLstBifrost() {
     }
   };
 
-  // form schema for sending transaction
+  /* --------------------------------------------------------------------- */
+  /*                               form setup                              */
+  /* --------------------------------------------------------------------- */
   const formSchema = z.object({
-    // token is a required field selected from a list
     token: z.enum(["xcdot", "glmr", "xcastr"], {
       required_error: "Please select a token",
     }),
-    // amount is a required field
     amount: z
       .string()
       .refine((val) => !isNaN(parseFloat(val)) && parseFloat(val) > 0, {
@@ -162,9 +161,7 @@ export default function MintRedeemLstBifrost() {
       })
       .superRefine((val, ctx) => {
         if (!maxBalance || !decimals) return;
-
         const inputAmount = parseUnits(val, decimals as number);
-
         if (inputAmount > (maxBalance as bigint)) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
@@ -174,47 +171,38 @@ export default function MintRedeemLstBifrost() {
       }),
   });
 
-  // 1. Define your form.
   const form = useForm<z.infer<typeof formSchema>>({
-    // resolver is zodResolver
     resolver: zodResolver(formSchema),
-    // default values for address and amount
     defaultValues: {
       token: "xcdot",
       amount: "",
     },
   });
 
-
-  // Extract the token value using watch instead of getValues
   const selectedToken = form.watch("token");
 
-  
-
-  // useReadContracts hook to read contract
+  /* --------------------------------------------------------------------- */
+  /*                           read-only contracts                         */
+  /* --------------------------------------------------------------------- */
   const { data, refetch: refetchBalance } = useReadContracts({
     contracts: [
       {
-        // get the balance of the selected token
         address: getContractAddress(selectedToken),
         abi: erc20Abi,
         functionName: "balanceOf",
         args: [address ? address : account.address],
       },
       {
-        // get the symbol of the selected token
         address: getContractAddress(selectedToken),
         abi: erc20Abi,
         functionName: "symbol",
       },
       {
-        // get the decimals of the selected token
         address: getContractAddress(selectedToken),
         abi: erc20Abi,
         functionName: "decimals",
       },
       {
-        // get the allowance of the selected token
         address: getContractAddress(selectedToken),
         abi: erc20Abi,
         functionName: "allowance",
@@ -227,133 +215,93 @@ export default function MintRedeemLstBifrost() {
     config: address ? localConfig : config,
   });
 
+  const maxBalance = data?.[0]?.result as bigint | undefined;
+  const symbol = data?.[1]?.result as string | undefined;
+  const decimals = data?.[2]?.result as number | undefined;
+  const mintAllowance = data?.[3]?.result as bigint | undefined;
 
-  // extract the data from the read contracts hook
-  const maxBalance = data?.[0]?.result as bigint | undefined; // balance of the selected token
-  const symbol = data?.[1]?.result as string | undefined; // symbol of the selected token
-  const decimals = data?.[2]?.result as number | undefined; // decimals of the selected token
-  const mintAllowance = data?.[3]?.result as bigint | undefined; // allowance of the selected token
-
-  // extract the amount value from the form
   const amount = form.watch("amount");
+  const needsApprove =
+    mintAllowance !== undefined && amount
+      ? mintAllowance < parseUnits(amount, decimals || 18)
+      : false;
 
-  // check if the amount is greater than the mint allowance
-  const needsApprove = mintAllowance !== undefined && 
-    amount ? 
-    mintAllowance < parseUnits(amount, decimals || 18) : 
-    false;
-
-
-  // 2. Define a submit handler.
+  /* --------------------------------------------------------------------- */
+  /*                            submit handler                             */
+  /* --------------------------------------------------------------------- */
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    // if the user has a sigpass wallet, and the token is not GLMR, approve the token
-    if (address) {
-      if (needsApprove) {
-        writeContractAsync({
-          account: await getSigpassWallet(),
-          address: getContractAddress(values.token),
-          abi: erc20Abi,
-          functionName: "approve",
-          args: [BIFROST_SLPX_CONTRACT_ADDRESS, parseUnits(values.amount, decimals as number)],
-        });
-      }
-    }
-
-    // if the user does not have a sigpass wallet, and the token is not GLMR, mint the token
-    if (!address) {
-      if (needsApprove) {
-        writeContractAsync({
-          address: getContractAddress(values.token),
-          abi: erc20Abi,
-          functionName: "approve",
-          args: [BIFROST_SLPX_CONTRACT_ADDRESS, parseUnits(values.amount, decimals as number)],
-        });
-      }
-    }
-
-    /**
-    * @dev Create order to mint vAsset or redeem vAsset on bifrost chain
-    * @param assetAddress The address of the asset to mint or redeem
-    * @param amount The amount of the asset to mint or redeem
-    * @param dest_chain_id When order is executed on Bifrost, Asset/vAsset will be transferred to this chain
-    * @param receiver The receiver address on the destination chain, 20 bytes for EVM, 32 bytes for Substrate
-    * @param remark The remark of the order, less than 32 bytes. For example, "OmniLS"
-    * @param channel_id The channel id of the order, you can set it. Bifrost chain will use it to share reward.
-    **/
-    if (!address && !needsApprove && selectedToken !== "glmr") {
-      writeContractAsync({
-        address: BIFROST_SLPX_CONTRACT_ADDRESS,
-        abi: moonbeamSlpxAbi,
-        functionName: "create_order",
+    if (needsApprove) {
+      await writeContractAsync({
+        ...(address && { account: await getSigpassWallet() }),
+        address: getContractAddress(values.token),
+        abi: erc20Abi,
+        functionName: "approve",
         args: [
-          getContractAddress(values.token),
+          BIFROST_SLPX_CONTRACT_ADDRESS,
           parseUnits(values.amount, decimals as number),
-          1284, // Moonbeam chain id
-          account.address, // receiver
-          "dotui", // remark
-          0, // channel_id
         ],
       });
+      return;
     }
 
-    if (!address && !needsApprove && selectedToken === "glmr") {
-      writeContractAsync({
-        address: BIFROST_SLPX_CONTRACT_ADDRESS,
-        abi: moonbeamSlpxAbi,
-        functionName: "create_order",
-        args: [
-          getContractAddress(values.token),
-          parseUnits(values.amount, decimals as number),
-          1284, // Moonbeam chain id
-          account.address, // receiver
-          "dotui", // remark
-          0, // channel_id
-        ],
+    const orderArgs = [
+      getContractAddress(values.token),
+      parseUnits(values.amount, decimals as number),
+      1284, // Moonbeam chain id
+      account.address, // receiver
+      "dotui", // remark
+      0, // channel_id
+    ] as const;
+
+    await writeContractAsync({
+      ...(address && { account: await getSigpassWallet() }),
+      address: BIFROST_SLPX_CONTRACT_ADDRESS,
+      abi: moonbeamSlpxAbi,
+      functionName: "create_order",
+      args: orderArgs,
+      ...(selectedToken === "glmr" && {
         value: parseUnits(values.amount, decimals as number),
-      });
-    }
+      }),
+    });
   }
 
-  // Watch for transaction hash and open dialog/drawer when received
+  /* --------------------------------------------------------------------- */
+  /*                       tx status + side effects                        */
+  /* --------------------------------------------------------------------- */
   useEffect(() => {
-    if (hash) {
-      setOpen(true);
-    }
+    if (hash) setOpen(true);
   }, [hash]);
 
-  // useWaitForTransactionReceipt hook to wait for transaction receipt
   const { isLoading: isConfirming, isSuccess: isConfirmed } =
     useWaitForTransactionReceipt({
       hash,
       config: address ? localConfig : config,
     });
 
-  // when isConfirmed, refetch the balance of the address
   useEffect(() => {
-    if (isConfirmed) {
-      refetchBalance();
-    }
+    if (isConfirmed) refetchBalance();
   }, [isConfirmed, refetchBalance]);
 
-  // Find the chain ID from the connected account
-  const chainId = account.chainId;
+  const explorerUrl =
+    config.chains?.find((c) => c.id === account.chainId)?.blockExplorers
+      ?.default?.url || config.chains?.[0]?.blockExplorers?.default?.url;
 
-  // Get the block explorer URL for the current chain using the config object
-  function getBlockExplorerUrl(chainId: number | undefined): string | undefined {
-    const chain = config.chains?.find(chain => chain.id === chainId);
-    return chain?.blockExplorers?.default?.url || config.chains?.[0]?.blockExplorers?.default?.url;
-  }
-
+  /* --------------------------------------------------------------------- */
+  /*                                render                                 */
+  /* --------------------------------------------------------------------- */
   return (
-    <Tabs defaultValue="mint" className="w-[320px] md:w-[425px]">
+    <Tabs defaultValue="mint" className="w-full">
       <TabsList className="grid w-full grid-cols-2">
         <TabsTrigger value="mint">Mint</TabsTrigger>
         <TabsTrigger value="redeem">Redeem</TabsTrigger>
       </TabsList>
+
+      {/* ------------------------------- Mint ------------------------------ */}
       <TabsContent value="mint">
-        <div className="flex flex-col gap-4 w-[320px] md:w-[425px]">
+        <div className="flex flex-col gap-4 w-full">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+              {/* token selector */}
               <FormField
                 control={form.control}
                 name="token"
@@ -383,29 +331,23 @@ export default function MintRedeemLstBifrost() {
                   </FormItem>
                 )}
               />
+
+              {/* amount input */}
               <FormField
                 control={form.control}
                 name="amount"
                 render={({ field }) => (
                   <FormItem>
-                    <div className="flex flex-row gap-2 items-center justify-between">
+                    <div className="flex items-center justify-between gap-2">
                       <FormLabel>Amount</FormLabel>
-                      <div className="flex flex-row gap-2 items-center text-xs text-muted-foreground">
-                        <WalletMinimal className="w-4 h-4" />{" "}
-                        {
-                          maxBalance !== undefined ? (
-                            formatUnits(maxBalance as bigint, decimals as number)
-                          ) : (
-                            <Skeleton className="w-[80px] h-4" />
-                          )
-                        }{" "}
-                        {
-                          symbol ? (
-                            symbol
-                          ) : (
-                            <Skeleton className="w-[40px] h-4" />
-                          )
-                        }
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <WalletMinimal className="w-4 h-4" />
+                        {maxBalance !== undefined ? (
+                          formatUnits(maxBalance, decimals as number)
+                        ) : (
+                          <Skeleton className="w-[80px] h-4" />
+                        )}{" "}
+                        {symbol ?? <Skeleton className="w-[40px] h-4" />}
                       </div>
                     </div>
                     <FormControl>
@@ -428,222 +370,229 @@ export default function MintRedeemLstBifrost() {
                       )}
                     </FormControl>
                     <FormDescription>
-                      The amount of {selectedToken === "glmr" ? "GLMR" : symbol} to mint
+                      The amount of{" "}
+                      {selectedToken === "glmr" ? "GLMR" : symbol ?? "token"} to
+                      mint
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              <div className="flex flex-row gap-2 items-center justify-between">
-                <h2>Token allowance</h2>
-                <div className="flex flex-row gap-2 items-center text-xs text-muted-foreground">
-                  <HandCoins className="w-4 h-4" />{" "}
-                  {
-                    mintAllowance !== undefined ? (
-                      formatUnits(mintAllowance as bigint, decimals as number)
-                    ) : (
-                      <Skeleton className="w-[80px] h-4" />
-                    )
-                  }{" "}
-                  {
-                    symbol ? (
-                      symbol
-                    ) : (
-                      <Skeleton className="w-[40px] h-4" />
-                    )
-                  }
-                </div>
-              </div>
-              <div className="flex flex-row gap-2 items-center justify-between">
-                <h2>You are about to mint this token</h2>
-                <div className="flex flex-row gap-2 items-center text-xs text-muted-foreground">
-                  {
-                    selectedToken === "glmr" ? (
-                      "xcvGLMR"
-                    ) : selectedToken === "xcdot" ? (
-                      "xcvDOT"
-                    ) : selectedToken === "xcastr" ? (
-                      "xcvASTR"
-                    ) : (
-                      <Skeleton className="w-[40px] h-4" />
-                    )
-                  }
-                </div>
-              </div>
-              <div className="flex flex-row gap-2 items-center justify-between">
-                {
-                  isPending ? (
-                    <Button type="submit" disabled className="w-full">
-                      <LoaderCircle className="w-4 h-4 animate-spin" /> Confirm in
-                      wallet...
-                    </Button>
-                  ) : needsApprove ? (
-                    <Button type="submit" className="w-full">Approve</Button>
+
+              {/* allowance & preview */}
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm">Token allowance</h2>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <HandCoins className="w-4 h-4" />
+                  {mintAllowance !== undefined ? (
+                    formatUnits(mintAllowance, decimals as number)
                   ) : (
-                    <Button disabled className="w-full">Approve</Button>
-                  )
-                }
-                {isPending ? (
-                  <Button type="submit" disabled className="w-full">
-                    <LoaderCircle className="w-4 h-4 animate-spin" /> Confirm in
-                    wallet...
-                  </Button>
-                ) : needsApprove ? (
-                  <Button disabled className="w-full">
-                    Mint
-                  </Button>
-                ) : (
-                  <Button type="submit" className="w-full">
-                    Mint
-                  </Button>
-                )}
+                    <Skeleton className="w-[80px] h-4" />
+                  )}{" "}
+                  {symbol ?? <Skeleton className="w-[40px] h-4" />}
+                </div>
               </div>
 
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm">You will receive</h2>
+                <span className="text-xs text-muted-foreground">
+                  {selectedToken === "glmr"
+                    ? "xcvGLMR"
+                    : selectedToken === "xcdot"
+                    ? "xcvDOT"
+                    : "xcvASTR"}
+                </span>
+              </div>
+
+              {/* action buttons */}
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={isPending || !needsApprove}
+                >
+                  {isPending && needsApprove ? (
+                    <>
+                      <LoaderCircle className="w-4 h-4 animate-spin mr-2" />
+                      Confirm…
+                    </>
+                  ) : (
+                    "Approve"
+                  )}
+                </Button>
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={isPending || needsApprove}
+                >
+                  {isPending && !needsApprove ? (
+                    <>
+                      <LoaderCircle className="w-4 h-4 animate-spin mr-2" />
+                      Confirm…
+                    </>
+                  ) : (
+                    "Mint"
+                  )}
+                </Button>
+              </div>
             </form>
           </Form>
-          {
-            // Desktop would be using dialog
-            isDesktop ? (
-              <Dialog open={open} onOpenChange={setOpen}>
-                <DialogTrigger asChild>
-                  <Button variant="outline" className="w-full">
-                    Transaction status <ChevronDown />
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Transaction status</DialogTitle>
-                  </DialogHeader>
-                  <DialogDescription>
-                    Follow the transaction status below.
-                  </DialogDescription>
-                  <div className="flex flex-col gap-2">
-                    {hash ? (
-                      <div className="flex flex-row gap-2 items-center">
-                        <Hash className="w-4 h-4" />
-                        Transaction Hash
-                        <a
-                          className="flex flex-row gap-2 items-center underline underline-offset-4"
-                          href={`${getBlockExplorerUrl(chainId)}/tx/${hash}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          {truncateHash(hash)}
-                          <ExternalLink className="w-4 h-4" />
-                        </a>
-                        <CopyButton copyText={hash} />
-                      </div>
-                    ) : (
-                      <div className="flex flex-row gap-2 items-center">
-                        <Hash className="w-4 h-4" />
-                        No transaction hash
-                      </div>
-                    )}
-                    {!isPending && !isConfirmed && !isConfirming && (
-                      <div className="flex flex-row gap-2 items-center">
-                        <Ban className="w-4 h-4" /> No transaction submitted
-                      </div>
-                    )}
-                    {isConfirming && (
-                      <div className="flex flex-row gap-2 items-center text-yellow-500">
-                        <LoaderCircle className="w-4 h-4 animate-spin" />{" "}
-                        Waiting for confirmation...
-                      </div>
-                    )}
-                    {isConfirmed && (
-                      <div className="flex flex-row gap-2 items-center text-green-500">
-                        <CircleCheck className="w-4 h-4" /> Transaction
-                        confirmed!
-                      </div>
-                    )}
-                    {error && (
-                      <div className="flex flex-row gap-2 items-center text-red-500">
-                        <X className="w-4 h-4" /> Error:{" "}
-                        {(error as BaseError).shortMessage || error.message}
-                      </div>
-                    )}
-                  </div>
-                  <DialogFooter>
-                    <DialogClose asChild>
-                      <Button variant="outline">Close</Button>
-                    </DialogClose>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            ) : (
-              // Mobile would be using drawer
-              <Drawer open={open} onOpenChange={setOpen}>
-                <DrawerTrigger asChild>
-                  <Button variant="outline" className="w-full">
-                    Transaction status <ChevronDown />
-                  </Button>
-                </DrawerTrigger>
-                <DrawerContent>
-                  <DrawerHeader>
-                    <DrawerTitle>Transaction status</DrawerTitle>
-                    <DrawerDescription>
-                      Follow the transaction status below.
-                    </DrawerDescription>
-                  </DrawerHeader>
-                  <div className="flex flex-col gap-2 p-4">
-                    {hash ? (
-                      <div className="flex flex-row gap-2 items-center">
-                        <Hash className="w-4 h-4" />
-                        Transaction Hash
-                        <a
-                          className="flex flex-row gap-2 items-center underline underline-offset-4"
-                          href={`${getBlockExplorerUrl(chainId)}/tx/${hash}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          {truncateHash(hash)}
-                          <ExternalLink className="w-4 h-4" />
-                          <CopyButton copyText={hash} />
-                        </a>
-                      </div>
-                    ) : (
-                      <div className="flex flex-row gap-2 items-center">
-                        <Hash className="w-4 h-4" />
-                        No transaction hash
-                      </div>
-                    )}
-                    {!isPending && !isConfirmed && !isConfirming && (
-                      <div className="flex flex-row gap-2 items-center">
-                        <Ban className="w-4 h-4" /> No transaction submitted
-                      </div>
-                    )}
-                    {isConfirming && (
-                      <div className="flex flex-row gap-2 items-center text-yellow-500">
-                        <LoaderCircle className="w-4 h-4 animate-spin" />{" "}
-                        Waiting for confirmation...
-                      </div>
-                    )}
-                    {isConfirmed && (
-                      <div className="flex flex-row gap-2 items-center text-green-500">
-                        <CircleCheck className="w-4 h-4" /> Transaction
-                        confirmed!
-                      </div>
-                    )}
-                    {error && (
-                      <div className="flex flex-row gap-2 items-center text-red-500">
-                        <X className="w-4 h-4" /> Error:{" "}
-                        {(error as BaseError).shortMessage || error.message}
-                      </div>
-                    )}
-                  </div>
-                  <DrawerFooter>
-                    <DrawerClose asChild>
-                      <Button variant="outline">Close</Button>
-                    </DrawerClose>
-                  </DrawerFooter>
-                </DrawerContent>
-              </Drawer>
-            )
-          }
+
+          {/* status panel */}
+          {isDesktop ? (
+            <Dialog open={open} onOpenChange={setOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" className="w-full">
+                  Transaction status <ChevronDown className="w-4 h-4" />
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Transaction status</DialogTitle>
+                </DialogHeader>
+                <DialogDescription>
+                  Follow every step—from wallet signature to final confirmation.
+                </DialogDescription>
+                <StatusBody
+                  hash={hash}
+                  isPending={isPending}
+                  isConfirming={isConfirming}
+                  isConfirmed={isConfirmed}
+                  error={error}
+                  explorerUrl={explorerUrl}
+                />
+                <DialogFooter>
+                  <DialogClose asChild>
+                    <Button variant="outline">Close</Button>
+                  </DialogClose>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          ) : (
+            <Drawer open={open} onOpenChange={setOpen}>
+              <DrawerTrigger asChild>
+                <Button variant="outline" className="w-full">
+                  Transaction status <ChevronDown className="w-4 h-4" />
+                </Button>
+              </DrawerTrigger>
+              <DrawerContent>
+                <DrawerHeader>
+                  <DrawerTitle>Transaction status</DrawerTitle>
+                  <DrawerDescription>
+                    Follow every step—from wallet signature to final
+                    confirmation.
+                  </DrawerDescription>
+                </DrawerHeader>
+                <div className="p-4">
+                  <StatusBody
+                    hash={hash}
+                    isPending={isPending}
+                    isConfirming={isConfirming}
+                    isConfirmed={isConfirmed}
+                    error={error}
+                    explorerUrl={explorerUrl}
+                  />
+                </div>
+                <DrawerFooter>
+                  <DrawerClose asChild>
+                    <Button variant="outline">Close</Button>
+                  </DrawerClose>
+                </DrawerFooter>
+              </DrawerContent>
+            </Drawer>
+          )}
         </div>
       </TabsContent>
-      <TabsContent value="redeem">placeholder</TabsContent>
+
+      {/* ------------------------------ Redeem ----------------------------- */}
+      <TabsContent value="redeem">
+        <div className="w-full text-center py-12 text-muted-foreground">
+          Redeem flow coming soon…
+        </div>
+      </TabsContent>
     </Tabs>
   );
 }
 
+/* --------------------------------------------------------------------- */
+/*                              helpers                                  */
+/* --------------------------------------------------------------------- */
+
+type StatusProps = {
+  hash?: `0x${string}`;
+  isPending: boolean;
+  isConfirming: boolean;
+  isConfirmed: boolean;
+  error: BaseError | WriteContractErrorType | null | undefined;
+  explorerUrl?: string;
+};
+
+function StatusBody({
+  hash,
+  isPending,
+  isConfirming,
+  isConfirmed,
+  error,
+  explorerUrl,
+}: StatusProps) {
+  return (
+    <div className="flex flex-col gap-2 text-sm">
+      {hash ? (
+        <div className="flex items-center gap-2 break-all">
+          <Hash className="w-4 h-4" />
+          <span>Tx Hash</span>
+          <a
+            className="inline-flex items-center gap-1 underline underline-offset-4"
+            href={`${explorerUrl}/tx/${hash}`}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {truncateHash(hash)}
+            <ExternalLink className="w-4 h-4" />
+          </a>
+          <CopyButton copyText={hash} />
+        </div>
+      ) : (
+        <div className="flex items-center gap-2">
+          <Hash className="w-4 h-4" /> No transaction hash
+        </div>
+      )}
+
+      {isPending && (
+        <div className="flex items-center gap-2 text-blue-500">
+          <LoaderCircle className="w-4 h-4 animate-spin" />
+          Awaiting signature in wallet…
+        </div>
+      )}
+
+      {!isPending && !isConfirming && !isConfirmed && (
+        <div className="flex items-center gap-2">
+          <Ban className="w-4 h-4" /> No transaction submitted
+        </div>
+      )}
+
+      {isConfirming && (
+        <div className="flex items-center gap-2 text-yellow-500">
+          <LoaderCircle className="w-4 h-4 animate-spin" />
+          Broadcast to network—waiting for confirmations…
+        </div>
+      )}
+
+      {isConfirmed && (
+        <div className="flex items-center gap-2 text-green-600">
+          <CircleCheck className="w-4 h-4" />
+          Confirmed on-chain!
+        </div>
+      )}
+
+      {error && (
+        <div className="flex items-center gap-2 text-red-500">
+          <X className="w-4 h-4" />
+          {"shortMessage" in (error as BaseError)
+            ? (error as BaseError).shortMessage
+            : (error as Error).message}
+        </div>
+      )}
+    </div>
+  );
+}
