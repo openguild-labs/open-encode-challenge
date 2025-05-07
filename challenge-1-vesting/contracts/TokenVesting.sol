@@ -6,6 +6,11 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
+// Token Address
+// Vesting ["VST"] -> 0xD2f45381d4aAd3B29C26E9FD86dAb8B98E2FE238
+// Staked ["SKT"] -> 0xcac8028b3361da8729a6ce521503ce88a50a4806
+// Vested ["VES"] -> 0x14574a3d70554722a14c0cbc50ab0e7834ac66a5
+
 contract TokenVesting is Ownable(msg.sender), Pausable, ReentrancyGuard {
 
     address Owner;
