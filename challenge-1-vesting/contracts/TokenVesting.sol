@@ -31,17 +31,27 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 contract TokenVesting is Ownable(msg.sender), Pausable, ReentrancyGuard {
     struct VestingSchedule {
     // TODO: Define the vesting schedule struct
+    uint256 totAmtOfTokens;
+    uint256 startTime;
+    uint256 cliffDuration;
+    uint256 vestingDuration;
+    uint256 amtClaimed;
+    bool revokedStatus;
     }
+
+    VestingSchedule[] private listOfVestingSchedule;
 
     // Token being vested
     // TODO: Add state variables
-
+    IERC20 public tokenVested;
 
     // Mapping from beneficiary to vesting schedule
     // TODO: Add state variables
+    mapping(address => VestingSchedule) public beneficaryAddressVestingScheduleMap;
 
     // Whitelist of beneficiaries
     // TODO: Add state variables
+    mapping(address => bool) public whitelist;
 
     // Events
     event VestingScheduleCreated(address indexed beneficiary, uint256 amount);
@@ -52,7 +62,7 @@ contract TokenVesting is Ownable(msg.sender), Pausable, ReentrancyGuard {
 
     constructor(address tokenAddress) {
            // TODO: Initialize the contract
-
+           tokenVested = IERC20(tokenAddress); 
     }
 
     // Modifier to check if beneficiary is whitelisted
@@ -80,6 +90,28 @@ contract TokenVesting is Ownable(msg.sender), Pausable, ReentrancyGuard {
         uint256 startTime
     ) external onlyOwner onlyWhitelisted(beneficiary) whenNotPaused {
         // TODO: Implement vesting schedule creation
+        
+        //Input parameters validation
+        //As the function definition is already doing a check for only whitelisted beneficiary, beneficiary address valiation 
+        //is not being performed seperately
+        //Check on token amount to be greater than zero
+        require(amount > 0, "Token vesting amount cannot be zero");
+        //check if cliff duration is more than or equal to vesting duration
+        require(cliffDuration < vestingDuration, "Cliff Duration cannot be more than or equal to vesting duration");
+        //check if startTime is less than current block time
+        require(startTime > block.timestamp, "Start time should be greater than block timestamp");
+        
+
+        //Creating new vesting schedule within function and then adding it to mapping of beneficiary and vesting schedule.
+        //There is no need for vesting schedule variable to be defined outside of function
+        listOfVestingSchedule.push(VestingSchedule({totAmtOfTokens: amount, startTime: startTime, cliffDuration: cliffDuration, vestingDuration: vestingDuration, amtClaimed: 0, revokedStatus: false}));
+        beneficaryAddressVestingScheduleMap[beneficiary] = VestingSchedule({totAmtOfTokens: amount, startTime: startTime, cliffDuration: cliffDuration, vestingDuration: vestingDuration, amtClaimed: 0, revokedStatus: false});
+
+        //emit event of vesting schedule creation
+        emit VestingScheduleCreated(beneficiary, amount);
+
+        //Transfer tokens to contract 
+        tokenVested.transfer(msg.sender, amount);
     }
 
     function calculateVestedAmount(
