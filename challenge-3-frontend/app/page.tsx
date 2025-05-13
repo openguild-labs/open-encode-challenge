@@ -26,6 +26,12 @@ export default function Home() {
           <li className="mb-2">
             <Link href="/mint-redeem-lst-bifrost">Mint/Redeem LST Bifrost</Link>
           </li>
+          <li className="mb-2">
+            <Link href="/token-vesting">Token Vesting</Link>
+          </li>
+          <li className="mb-2">
+            <Link href="/yield-farm">Yield Farm</Link>
+          </li>
         </ol>
         <div className="flex gap-4 items-center flex-col sm:flex-row">
           <a
